@@ -1,0 +1,953 @@
+use crate::{audio::Engine, dsp::Meters, platform, settings::Settings, skins::*};
+use eframe::egui::*;
+use std::time::{Duration, Instant};
+pub struct RadioApp {
+    materials: Materials,
+    observed_window: Vec2,
+    resize_save: Option<Instant>,
+    applied_connection: (String, String, String),
+    displayed_track: (String, String),
+    track_changed: Instant,
+    capture: Option<std::path::PathBuf>,
+    tray: Option<platform::Tray>,
+    hidden_to_tray: bool,
+    restore_until: Instant,
+    tray_check: Option<std::path::PathBuf>,
+    tray_check_phase: u8,
+    tray_check_before: (u64, u64),
+    engine: Engine,
+    settings: Settings,
+    show_settings: bool,
+    power: bool,
+    mute: bool,
+    meters: Meters,
+    last: Instant,
+    start: Instant,
+    devices: Vec<String>,
+    error: String,
+}
+impl RadioApp {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let mut fonts = FontDefinitions::default();
+        fonts.font_data.insert(
+            "vfd".into(),
+            FontData::from_static(include_bytes!("../assets/Doto.ttf")).into(),
+        );
+        fonts.families.insert(
+            FontFamily::Name("vfd".into()),
+            vec!["vfd".into(), "Hack".into()],
+        );
+        fonts.font_data.insert(
+            "badge".into(),
+            FontData::from_static(include_bytes!("../assets/Audiowide-Regular.ttf")).into(),
+        );
+        fonts
+            .families
+            .insert(FontFamily::Name("badge".into()), vec!["badge".into()]);
+        cc.egui_ctx.set_fonts(fonts);
+        cc.egui_ctx.set_visuals(Visuals::dark());
+        let settings = Settings::load();
+        if settings.start_minimized {
+            cc.egui_ctx
+                .send_viewport_cmd(ViewportCommand::Minimized(true));
+        }
+        let materials = Materials::new(&cc.egui_ctx);
+        let mut engine = Engine::new();
+        engine.volume(settings.volume);
+        if settings.autoplay || std::env::args().any(|a| a == "--autoplay") {
+            engine.start(settings.clone());
+        }
+        Self {
+            materials,
+            observed_window: Vec2::ZERO,
+            resize_save: None,
+            applied_connection: (
+                settings.stream_url.clone(),
+                settings.metadata_url.clone(),
+                settings.device.clone(),
+            ),
+            displayed_track: (String::new(), String::new()),
+            track_changed: Instant::now(),
+            capture: std::env::args()
+                .skip_while(|a| a != "--capture")
+                .nth(1)
+                .map(Into::into),
+            tray: platform::Tray::new()
+                .map_err(|e| log::warn!("Tray: {e}"))
+                .ok(),
+            hidden_to_tray: false,
+            restore_until: Instant::now(),
+            tray_check: std::env::args()
+                .skip_while(|a| a != "--tray-check")
+                .nth(1)
+                .map(Into::into),
+            tray_check_phase: 0,
+            tray_check_before: (0, 0),
+            power: true,
+            mute: false,
+            devices: platform::devices(),
+            engine,
+            settings,
+            show_settings: std::env::args().any(|a| a == "--settings"),
+            meters: Meters::default(),
+            last: Instant::now(),
+            start: Instant::now(),
+            error: String::new(),
+        }
+    }
+    fn minimize_to_tray(&mut self, ctx: &Context) {
+        if self.tray.is_none() {
+            ctx.send_viewport_cmd(ViewportCommand::Minimized(true));
+            return;
+        }
+        self.hidden_to_tray = true;
+        platform::set_tray_mode(true);
+        if self.show_settings {
+            ctx.send_viewport_cmd_to(
+                ViewportId::from_hash_of("receiver-settings"),
+                ViewportCommand::Close,
+            );
+        }
+        self.show_settings = false;
+        ctx.send_viewport_cmd(ViewportCommand::Minimized(true));
+        ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+        ctx.request_repaint_after(Duration::from_millis(33));
+    }
+    fn restore_from_tray(&mut self, ctx: &Context) {
+        self.hidden_to_tray = false;
+        platform::set_tray_mode(false);
+        self.restore_until = Instant::now() + Duration::from_millis(600);
+        ctx.send_viewport_cmd(ViewportCommand::Visible(true));
+        ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
+        ctx.send_viewport_cmd(ViewportCommand::Focus);
+        ctx.request_repaint();
+    }
+    fn button(&self, ui: &mut Ui, r: Rect, kind: &str, lit: bool) -> Response {
+        let response = ui.interact(r, Id::unique(kind), Sense::click());
+        let p = ui.painter();
+        if response.hovered() {
+            p.rect_filled(
+                r.shrink(1.),
+                1.,
+                Color32::from_white_alpha(if response.is_pointer_button_down_on() {
+                    2
+                } else {
+                    5
+                }),
+            );
+        }
+        let s = r.height() / 44.;
+        let c = r.center();
+        let ink = if lit {
+            CYAN
+        } else {
+            Color32::from_rgb(166, 173, 169)
+        };
+        match kind {
+            "transport" => {
+                if lit {
+                    p.rect_filled(Rect::from_center_size(c, vec2(12., 12.) * s), 0.8 * s, ink);
+                } else {
+                    p.add(Shape::convex_polygon(
+                        vec![
+                            c + vec2(-5., -9.) * s,
+                            c + vec2(-5., 9.) * s,
+                            c + vec2(10., 0.) * s,
+                        ],
+                        ink,
+                        Stroke::NONE,
+                    ));
+                }
+            }
+            "power" => {
+                let led = Rect::from_center_size(c + vec2(0., 1.) * s, vec2(18., 2.) * s);
+                p.rect_filled(
+                    led.expand(1.4 * s),
+                    1.,
+                    Color32::from_rgba_unmultiplied(24, 220, 228, 16),
+                );
+                p.rect_filled(
+                    led,
+                    0.5 * s,
+                    if lit {
+                        CYAN
+                    } else {
+                        Color32::from_rgb(150, 38, 18)
+                    },
+                );
+            }
+            "mute" => {
+                p.add(Shape::convex_polygon(
+                    vec![
+                        c + vec2(-10., -3.) * s,
+                        c + vec2(-5., -3.) * s,
+                        c + vec2(1., -8.) * s,
+                        c + vec2(1., 8.) * s,
+                        c + vec2(-5., 3.) * s,
+                        c + vec2(-10., 3.) * s,
+                    ],
+                    SILVER,
+                    Stroke::NONE,
+                ));
+                if lit {
+                    p.line_segment(
+                        [c + vec2(-12., 11.) * s, c + vec2(10., -10.) * s],
+                        Stroke::new(1.5 * s, Color32::from_rgb(233, 179, 90)),
+                    );
+                } else {
+                    let arc: Vec<_> = (0..=12)
+                        .map(|i| {
+                            let a = -0.9 + i as f32 / 12. * 1.8;
+                            c + vec2(2. + a.cos() * 8., a.sin() * 8.) * s
+                        })
+                        .collect();
+                    p.add(Shape::line(arc, Stroke::new(s, SILVER)));
+                }
+            }
+            "settings" => {
+                let pts: Vec<_> = (0..48)
+                    .map(|i| {
+                        let a = i as f32 / 48. * std::f32::consts::TAU;
+                        let radius = if i % 6 < 3 { 8.5 } else { 6.6 };
+                        c + vec2(a.cos(), a.sin()) * radius * s
+                    })
+                    .collect();
+                p.add(Shape::convex_polygon(pts, SILVER, Stroke::NONE));
+                p.circle_filled(c, 3.8 * s, Color32::from_gray(25));
+                p.circle_stroke(c, 3.8 * s, Stroke::new(0.6 * s, Color32::from_gray(115)));
+            }
+            _ => {}
+        }
+        response
+            .on_hover_cursor(CursorIcon::PointingHand)
+            .on_hover_text(match kind {
+                "transport" => {
+                    if lit {
+                        "Stop stream"
+                    } else {
+                        "Play Radio Crash"
+                    }
+                }
+                "power" => "Power / standby",
+                "mute" => {
+                    if lit {
+                        "Unmute"
+                    } else {
+                        "Mute"
+                    }
+                }
+                _ => "Receiver settings",
+            })
+    }
+    fn window_controls(&mut self, ui: &mut Ui) {
+        let ctx = ui.ctx().clone();
+        let area = ui.max_rect();
+        let current = area.size();
+        if (current - self.observed_window).length() > 0.5 && current.x >= 200. && current.y >= 100.
+        {
+            let previous = self.observed_window;
+            self.observed_window = current;
+            let mut width = current.x;
+            if self.settings.lock_aspect
+                && previous.x > 0.
+                && (current.y - current.x / crate::settings::PANEL_ASPECT).abs() > 1.5
+            {
+                if (current.y - previous.y).abs() * crate::settings::PANEL_ASPECT
+                    > (current.x - previous.x).abs()
+                {
+                    width = current.y * crate::settings::PANEL_ASPECT;
+                }
+                let size = crate::settings::window_size(width, current.y, true);
+                ctx.send_viewport_cmd(ViewportCommand::InnerSize(vec2(size[0], size[1])));
+            }
+            self.settings.window_width = width;
+            self.settings.window_height = if self.settings.lock_aspect {
+                width / crate::settings::PANEL_ASPECT
+            } else {
+                current.y
+            };
+            self.resize_save = Some(Instant::now());
+        }
+        // Hit-test the visible metal rim, not the transparent canvas around the feet.
+        let scale = (current.x / 1200.).min(current.y / 440.);
+        let origin = area.center() - vec2(600., 220.) * scale;
+        let handle = |x: f32, y: f32, w: f32, h: f32| {
+            Rect::from_min_size(origin + vec2(x, y) * scale, vec2(w, h) * scale)
+        };
+        let handles = [
+            (
+                0,
+                handle(1177., 28., 19., 350.),
+                CursorIcon::ResizeHorizontal,
+            ),
+            (1, handle(24., 386., 1140., 13.), CursorIcon::ResizeVertical),
+            (2, handle(1170., 380., 26., 20.), CursorIcon::ResizeNwSe),
+        ];
+        for (axis, rect, cursor) in handles {
+            let response = ui
+                .interact(rect, Id::unique(("receiver-resize", axis)), Sense::drag())
+                .on_hover_cursor(cursor);
+            if response.dragged() {
+                let d = response.drag_delta();
+                let width = if self.settings.lock_aspect
+                    && (axis == 1
+                        || (axis == 2 && d.y.abs() * crate::settings::PANEL_ASPECT > d.x.abs()))
+                {
+                    (current.y + d.y) * crate::settings::PANEL_ASPECT
+                } else {
+                    current.x + if axis == 1 { 0. } else { d.x }
+                };
+                let height = current.y + if axis == 0 { 0. } else { d.y };
+                let size = crate::settings::window_size(width, height, self.settings.lock_aspect);
+                ctx.send_viewport_cmd(ViewportCommand::InnerSize(vec2(size[0], size[1])));
+                self.resize_save = Some(Instant::now());
+            }
+        }
+        if self
+            .resize_save
+            .is_some_and(|at| at.elapsed() > Duration::from_millis(750))
+            && !ui.input(|i| i.pointer.any_down())
+        {
+            if let Err(e) = self.settings.save() {
+                self.error = e.to_string();
+            }
+            self.resize_save = None;
+        }
+    }
+    fn settings(&mut self, ctx: &Context) {
+        let mut apply = false;
+        let mut closed = false;
+        ctx.show_viewport_immediate(
+            ViewportId::from_hash_of("receiver-settings"),
+            ViewportBuilder::default().with_title("Radio Crash · Receiver settings")
+                .with_inner_size([540., 620.]).with_resizable(false).with_decorations(true),
+            |ctx, _| {
+                closed = ctx.input(|i| i.viewport().close_requested());
+                CentralPanel::default().show(ctx, |ui| {
+                    ui.heading("Receiver settings");
+                    ui.add_space(8.);
+                    ui.label("Stream URL");
+                    ui.add(TextEdit::singleline(&mut self.settings.stream_url).desired_width(f32::INFINITY));
+                    ui.label("Now Playing JSON endpoint · empty disables polling");
+                    ui.add(TextEdit::singleline(&mut self.settings.metadata_url).desired_width(f32::INFINITY));
+                    ComboBox::from_label("Audio output").selected_text(if self.settings.device.is_empty() { "System default" } else { &self.settings.device }).show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.settings.device, String::new(), "System default");
+                        for d in &self.devices { ui.selectable_value(&mut self.settings.device, d.clone(), d); }
+                    });
+                    if ui.button("Refresh devices").clicked() { self.devices=platform::devices(); }
+                    ui.checkbox(&mut self.settings.autoplay,"Autoplay on launch");
+                    ui.checkbox(&mut self.settings.start_minimized,"Start minimized");
+                    ui.add_enabled(self.tray.is_some(), Checkbox::new(&mut self.settings.minimize_to_tray,"Minimize to tray"));
+                    ui.separator();
+                    ui.label("Window size · desktop points");
+                    ui.horizontal(|ui|{
+                        for (label,width) in [("Small",640.),("Everyday",780.),("Large",1000.),("Full",1200.)] {
+                            if ui.button(label).clicked(){self.settings.window_width=width;self.settings.window_height=width/crate::settings::PANEL_ASPECT;}
+                        }
+                    });
+                    ui.horizontal(|ui|{
+                        ui.label("Width");
+                        let width=ui.add(DragValue::new(&mut self.settings.window_width).range(560.0..=1920.0).speed(2.));
+                        if width.changed() && self.settings.lock_aspect {self.settings.window_height=self.settings.window_width/crate::settings::PANEL_ASPECT;}
+                        ui.label("Height");
+                        let height=ui.add(DragValue::new(&mut self.settings.window_height).range(206.0..=1080.0).speed(1.));
+                        if height.changed() && self.settings.lock_aspect {self.settings.window_width=self.settings.window_height*crate::settings::PANEL_ASPECT;}
+                    });
+                    ui.checkbox(&mut self.settings.lock_aspect,"Keep receiver proportions");
+                    ui.small("Drag the right/bottom edge or lower-right corner to resize. Size is remembered.");
+                    ui.separator();
+                    ui.label("Skin: VFD Digital — Black Aluminium");
+                    ui.checkbox(&mut self.settings.fast_vu,"Faster VU decay");
+                    ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
+                    ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD SOUND threshold · kbps"));
+                    ui.small("HD SOUND is a Radio Crash quality badge based on measured bitrate.\nMeters show the stream level before volume adjustment.");
+                    ui.add_space(8.);
+                    apply=ui.button("Save and apply").clicked();
+                    if !self.error.is_empty() { ui.colored_label(Color32::LIGHT_RED,&self.error); }
+                });
+            },
+        );
+        if closed {
+            self.show_settings = false;
+        }
+        if apply {
+            if !(self.settings.stream_url.starts_with("https://")
+                || self.settings.stream_url.starts_with("http://"))
+            {
+                self.error = "Stream URL must use HTTP or HTTPS".into();
+                return;
+            }
+            match self.settings.save() {
+                Ok(()) => {
+                    self.error.clear();
+                    let size = crate::settings::window_size(
+                        self.settings.window_width,
+                        self.settings.window_height,
+                        self.settings.lock_aspect,
+                    );
+                    self.settings.window_width = size[0];
+                    self.settings.window_height = size[1];
+                    ctx.send_viewport_cmd(ViewportCommand::InnerSize(vec2(size[0], size[1])));
+                    let connection = (
+                        self.settings.stream_url.clone(),
+                        self.settings.metadata_url.clone(),
+                        self.settings.device.clone(),
+                    );
+                    if self.engine.running() && connection != self.applied_connection {
+                        self.engine.start(self.settings.clone());
+                    }
+                    self.applied_connection = connection;
+                    self.show_settings = false;
+                }
+                Err(e) => self.error = e.to_string(),
+            }
+        }
+    }
+    fn marquee(&self, p: &Painter, r: Rect, s: &str, size: f32) {
+        let font = FontId::new(size, FontFamily::Name("vfd".into()));
+        let galley = p.layout_no_wrap(s.to_owned(), font, CYAN);
+        let w = galley.size().x;
+        let clipped = p.with_clip_rect(r);
+        if w <= r.width() {
+            glow(&clipped, r.min, s, size);
+        } else {
+            let phase = (self.track_changed.elapsed().as_secs_f32() - 4.).max(0.) * 25.;
+            let offset = phase % (w + 45.);
+            glow(&clipped, r.min - vec2(offset, 0.), s, size);
+            glow(&clipped, r.min + vec2(w + 45. - offset, 0.), s, size);
+        }
+    }
+}
+impl eframe::App for RadioApp {
+    fn logic(&mut self, ctx: &Context, _: &mut eframe::Frame) {
+        let snapshot = self.engine.state.lock().unwrap().clone();
+        let action = if let Some(tray) = &mut self.tray {
+            tray.update(&snapshot.meters, self.engine.running());
+            tray.poll()
+        } else {
+            platform::TrayAction::None
+        };
+        match action {
+            platform::TrayAction::Restore => self.restore_from_tray(ctx),
+            platform::TrayAction::Quit => ctx.send_viewport_cmd(ViewportCommand::Close),
+            platform::TrayAction::None => {}
+        }
+        if self.settings.minimize_to_tray
+            && self.tray.is_some()
+            && !self.hidden_to_tray
+            && Instant::now() > self.restore_until
+            && ctx.input(|i| i.viewport().minimized.unwrap_or(false))
+        {
+            self.minimize_to_tray(ctx);
+        }
+        // This timer also drives App::logic when no GUI frame is painted.
+        ctx.request_repaint_after(Duration::from_millis(if self.engine.running() {
+            33
+        } else {
+            150
+        }));
+        if self.tray_check.is_some() {
+            let seconds = self.start.elapsed().as_secs_f32();
+            if self.tray_check_phase == 0 && seconds > 2. {
+                if let Some(tray) = &self.tray {
+                    self.tray_check_before = (tray.ticks, tray.uploads);
+                }
+                self.minimize_to_tray(ctx);
+                self.tray_check_phase = 1;
+                log::info!("TRAY_CHECK hidden");
+            }
+            if self.tray_check_phase == 1 && seconds > 8. {
+                if let Some(tray) = &self.tray {
+                    let ticks = tray.ticks - self.tray_check_before.0;
+                    let uploads = tray.uploads - self.tray_check_before.1;
+                    let dir = self.tray_check.as_ref().unwrap();
+                    let _ = std::fs::create_dir_all(dir);
+                    let _ = tray.export(&dir.join("tray-live.png"));
+                    let report = serde_json::json!({"hidden_ticks":ticks,"changed_icons":uploads,"status":snapshot.status,"rms_dbfs":snapshot.meters.rms,"tray_only":platform::is_tray_mode(),"success":ticks>20&&uploads>0&&platform::is_tray_mode()});
+                    let _ = std::fs::write(dir.join("tray-check.json"), report.to_string());
+                    log::info!("TRAY_CHECK {report}");
+                }
+                self.restore_from_tray(ctx);
+                self.tray_check_phase = 2;
+            }
+            if self.tray_check_phase == 2 && seconds > 12. {
+                ctx.send_viewport_cmd(ViewportCommand::Close);
+                self.tray_check_phase = 3;
+            }
+        }
+    }
+    fn clear_color(&self, _: &Visuals) -> [f32; 4] {
+        [0.; 4]
+    }
+    fn ui(&mut self, ui: &mut Ui, _: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+        ctx.request_repaint_after(Duration::from_millis(
+            if ctx.input(|i| i.viewport().minimized.unwrap_or(false)) || !self.engine.running() {
+                200
+            } else {
+                16
+            },
+        ));
+        let now = Instant::now();
+        let dt = (now - self.last).as_secs_f32().min(0.2);
+        self.last = now;
+        let snap = self.engine.state.lock().unwrap().clone();
+        if self.displayed_track.0 != snap.artist || self.displayed_track.1 != snap.title {
+            self.displayed_track = (snap.artist.clone(), snap.title.clone());
+            self.track_changed = now;
+        }
+        for c in 0..2 {
+            let target = if self.engine.running() {
+                snap.meters.rms[c]
+            } else {
+                -60.
+            };
+            self.meters.rms[c] = crate::dsp::follow(
+                self.meters.rms[c],
+                target,
+                dt,
+                if self.settings.fast_vu { 180. } else { 120. },
+            );
+        }
+        for i in 0..10 {
+            let t = if self.engine.running() {
+                snap.meters.spectrum[i]
+            } else {
+                -60.
+            };
+            self.meters.spectrum[i] = crate::dsp::follow(self.meters.spectrum[i], t, dt, 90.);
+        }
+        let area = ui.max_rect();
+        let scale = (area.width() / 1200.).min(area.height() / 440.);
+        let base = area.center() - vec2(600., 220.) * scale;
+        let pt = |x: f32, y: f32| base + vec2(x, y) * scale;
+        let rect =
+            |x: f32, y: f32, w: f32, h: f32| Rect::from_min_size(pt(x, y), vec2(w, h) * scale);
+        let p = ui.painter().clone();
+        p.rect_filled(area, 0., Color32::TRANSPARENT);
+        self.materials.paint(&p, rect(0., 0., 1200., 440.));
+        self.materials
+            .logo(&p, rect(94., 49., 205., 205. * 67. / 900.));
+        let drag = ui.interact(
+            rect(45., 30., 1110., 62.),
+            Id::unique("chassis-drag"),
+            Sense::click_and_drag(),
+        );
+        if drag.drag_started() {
+            ctx.send_viewport_cmd(ViewportCommand::StartDrag);
+        }
+        drag.context_menu(|ui| {
+            for (label, width) in [
+                ("Small · 640", 640.),
+                ("Everyday · 780", 780.),
+                ("Large · 1000", 1000.),
+            ] {
+                if ui.button(label).clicked() {
+                    ctx.send_viewport_cmd(ViewportCommand::InnerSize(vec2(
+                        width,
+                        width / crate::settings::PANEL_ASPECT,
+                    )));
+                    ui.close();
+                }
+            }
+            ui.separator();
+            if ui.button("Receiver settings").clicked() {
+                self.show_settings = true;
+                ui.close();
+            }
+            if ui
+                .add_enabled(
+                    self.tray.is_some(),
+                    Button::new("Minimize to tray · L/R meters"),
+                )
+                .clicked()
+            {
+                self.minimize_to_tray(&ctx);
+                ui.close();
+            }
+            if ui.button("Minimize to Dock / taskbar").clicked() {
+                ctx.send_viewport_cmd(ViewportCommand::Minimized(true));
+                ui.close();
+            }
+            if ui.button("Quit Radio Crash").clicked() {
+                ctx.send_viewport_cmd(ViewportCommand::Close);
+            }
+        });
+        // Coordinates below map the live phosphor plane inside the photographed glass aperture.
+        let pt = |x: f32, y: f32| {
+            base + vec2(
+                70. + (x - 48.) * 1060. / 1104.,
+                99. + (y - 111.) * 136. / 175.,
+            ) * scale
+        };
+        let rect = |x: f32, y: f32, w: f32, h: f32| {
+            Rect::from_min_size(pt(x, y), vec2(w * 1060. / 1104., h * 136. / 175.) * scale)
+        };
+        let scale = scale * 0.9;
+        for x in [443., 820.] {
+            p.line_segment(
+                [pt(x, 129.), pt(x, 269.)],
+                Stroke::new(0.6 * scale, Color32::from_rgb(31, 62, 63)),
+            );
+        }
+        let muted_display = if self.power { CYAN } else { DIM };
+        text(
+            &p,
+            pt(70., 129.),
+            "STEREO LEVEL",
+            9.2 * scale,
+            muted_display.gamma_multiply(0.7),
+        );
+        text(
+            &p,
+            pt(348., 129.),
+            "PEAK HOLD",
+            8.5 * scale,
+            Color32::from_rgb(202, 172, 69),
+        );
+        for (db, caption) in [
+            (-40., "−40"),
+            (-12., "−12"),
+            (-8., "−8"),
+            (-4., "−4"),
+            (0., "0"),
+            (4., "+4"),
+            (8., "+8"),
+            (12., "+12"),
+            (18., "+18"),
+        ] {
+            let x = 98. + crate::dsp::vu_position(db) * 312.;
+            let color = vu_color(db);
+            p.text(
+                pt(x + 3., 153.),
+                Align2::CENTER_TOP,
+                caption,
+                FontId::monospace(9.4 * scale),
+                color,
+            );
+            p.line_segment(
+                [pt(x + 3., 169.), pt(x + 3., 175.)],
+                Stroke::new(
+                    if db == 0. { 1.3 * scale } else { 0.7 * scale },
+                    color.gamma_multiply(0.65),
+                ),
+            );
+        }
+        text(&p, pt(70., 153.), "dB", 8.5 * scale, DIM);
+        for c in 0..2 {
+            let y = 187. + c as f32 * 38.;
+            text(
+                &p,
+                pt(70., y - 2.),
+                if c == 0 { "L" } else { "R" },
+                17. * scale,
+                muted_display,
+            );
+            let level = crate::dsp::vu_relative(self.meters.rms[c]);
+            for (i, db) in crate::dsp::VU_SCALE.iter().enumerate() {
+                let x = 98. + i as f32 * 8.;
+                for row in 0..2 {
+                    segment_with_color(
+                        &p,
+                        rect(x, y + row as f32 * 5.3, 6., 3.7),
+                        level >= *db,
+                        vu_color(*db),
+                    );
+                }
+            }
+            if let Some(index) = crate::dsp::vu_peak_index(snap.meters.held_peaks[c]) {
+                let x = 98. + index as f32 * 8.;
+                let marker = rect(x - 0.3, y - 7., 6.6, 3.6);
+                p.rect_filled(
+                    marker.expand(2. * scale),
+                    0.7 * scale,
+                    Color32::from_rgba_unmultiplied(255, 194, 70, 22),
+                );
+                p.rect_filled(marker, 0.3 * scale, Color32::from_rgb(255, 232, 135));
+                p.line_segment(
+                    [pt(x + 2.9, y - 3.1), pt(x + 2.9, y + 9.3)],
+                    Stroke::new(0.9 * scale, Color32::from_rgb(255, 224, 118)),
+                );
+            }
+        }
+        text(&p, pt(99., 257.), "RMS", 7.8 * scale, DIM);
+        text(&p, pt(245., 257.), "0 dB REF = −18 dBFS", 7.8 * scale, DIM);
+        let status = if !self.power {
+            "POWER OFF"
+        } else {
+            &snap.status
+        };
+        text(
+            &p,
+            pt(466., 129.),
+            "NOW PLAYING",
+            9.5 * scale,
+            muted_display.gamma_multiply(0.7),
+        );
+        let status_size = if status.len() > 10 { 8.5 } else { 10. };
+        p.text(
+            pt(797., 129.),
+            Align2::RIGHT_TOP,
+            status,
+            FontId::monospace(status_size * scale),
+            muted_display,
+        );
+        if status == "ON AIR" {
+            p.circle_filled(pt(732., 134.), 2.5 * scale, CYAN);
+            p.circle_filled(
+                pt(732., 134.),
+                4.6 * scale,
+                Color32::from_rgba_unmultiplied(80, 245, 245, 16),
+            );
+        }
+        let artist = if snap.artist.is_empty() {
+            "RADIO CRASH"
+        } else {
+            &snap.artist
+        };
+        let title = if snap.title.is_empty() {
+            if self.engine.running() {
+                "Waiting for metadata"
+            } else {
+                "Good music lives on"
+            }
+        } else {
+            &snap.title
+        };
+        self.marquee(&p, rect(466., 158., 331., 34.), artist, 26. * scale);
+        self.marquee(&p, rect(466., 201., 331., 28.), title, 20.5 * scale);
+        p.line_segment(
+            [pt(465., 242.), pt(799., 242.)],
+            Stroke::new(0.6 * scale, DIM),
+        );
+        let tech = format!(
+            "{}   {}   {}   {}",
+            snap.bitrate
+                .map(|v| format!("{v} kbps"))
+                .unwrap_or("— kbps".into()),
+            if snap.codec.is_empty() {
+                "—"
+            } else {
+                &snap.codec
+            },
+            if snap.rate > 0 {
+                format!("{:.1} kHz", snap.rate as f32 / 1000.)
+            } else {
+                "— kHz".into()
+            },
+            match snap.channels {
+                1 => "MONO",
+                2 => "STEREO",
+                _ => "—",
+            }
+        );
+        text(&p, pt(467., 255.), &tech, 10. * scale, muted_display);
+        text(
+            &p,
+            pt(842., 129.),
+            "SPECTRUM ANALYZER",
+            9. * scale,
+            muted_display.gamma_multiply(0.7),
+        );
+        text(&p, pt(1117., 129.), "Hz", 8. * scale, DIM);
+        for (y, l) in [(163., "0"), (197., "−20"), (232., "−40")] {
+            p.text(
+                pt(850., y),
+                Align2::RIGHT_TOP,
+                l,
+                FontId::monospace(7. * scale),
+                DIM,
+            );
+        }
+        for i in 0..10 {
+            let x = 860. + i as f32 * 27.;
+            for j in 0..20 {
+                segment(
+                    &p,
+                    rect(x, 243. - j as f32 * 4.6, 17., 2.9),
+                    self.settings.spectrum
+                        && snap.meters.available[i]
+                        && self.meters.spectrum[i] > -60. + j as f32 * 3.,
+                    j,
+                    20,
+                );
+            }
+            p.text(
+                pt(x + 8.5, 257.),
+                Align2::CENTER_TOP,
+                [
+                    "32", "64", "125", "250", "500", "1k", "2k", "4k", "8k", "16k",
+                ][i],
+                FontId::monospace(8.3 * scale),
+                if snap.meters.available[i] {
+                    CYAN.gamma_multiply(0.85)
+                } else {
+                    DIM
+                },
+            );
+        }
+        // Fine optical reflections are composited over the emitted phosphor, keeping it behind glass.
+        gradient(
+            &p,
+            rect(51., 114., 1095., 46.),
+            Color32::from_rgba_unmultiplied(154, 192, 198, 9),
+            Color32::TRANSPARENT,
+        );
+        let hd = snap.bitrate.is_some_and(|v| v >= self.settings.hd_kbps) && self.engine.running();
+        text(
+            &p,
+            pt(466., 273.),
+            "HD SOUND",
+            7.7 * scale,
+            if hd {
+                Color32::from_rgb(83, 228, 207)
+            } else {
+                DIM
+            },
+        );
+        p.text(
+            pt(798., 273.),
+            Align2::RIGHT_TOP,
+            if self.mute {
+                "MUTED".into()
+            } else {
+                format!("VOL {:02}%", (self.settings.volume * 100.).round() as u32)
+            },
+            FontId::monospace(7.7 * scale),
+            if self.mute {
+                Color32::from_rgb(238, 176, 77)
+            } else {
+                DIM
+            },
+        );
+        // The photographed hardware surfaces are native interactive controls, never baked indicators.
+        let scale = (area.width() / 1200.).min(area.height() / 440.);
+        let pt = |x: f32, y: f32| base + vec2(x, y) * scale;
+        let rect =
+            |x: f32, y: f32, w: f32, h: f32| Rect::from_min_size(pt(x, y), vec2(w, h) * scale);
+        let badge = rect(458., 307., 164., 43.);
+        hd_radio(
+            &p,
+            badge,
+            self.power,
+            hd && snap.status == "ON AIR" && self.power,
+        );
+        ui.interact(badge,Id::unique("hd-radio-quality"),Sense::hover()).on_hover_text(format!("Radio Crash oznaka kvalitete streama. Pun sjaj od {} kbps. Internetski radio; nije HD Radio/IBOC prijamnik.",self.settings.hd_kbps));
+        if self
+            .button(ui, rect(89., 308., 55., 40.), "power", self.power)
+            .clicked()
+        {
+            self.power = !self.power;
+            if self.power {
+                self.engine.start(self.settings.clone());
+            } else {
+                self.engine.stop();
+            }
+        }
+        let running = self.engine.running();
+        if self
+            .button(ui, rect(230., 307., 110., 42.), "transport", running)
+            .clicked()
+            && self.power
+        {
+            if running {
+                self.engine.stop();
+            } else {
+                self.engine.start(self.settings.clone());
+            }
+        }
+        if self
+            .button(ui, rect(705., 307., 62., 42.), "mute", self.mute)
+            .clicked()
+        {
+            self.mute = !self.mute;
+        }
+        let center = pt(911., 319.);
+        let radius = 54. * scale;
+        let knob = ui
+            .interact(
+                Rect::from_center_size(center, vec2(radius * 2.15, radius * 2.15)),
+                Id::unique("volume"),
+                Sense::click_and_drag(),
+            )
+            .on_hover_cursor(CursorIcon::Grab)
+            .on_hover_text(format!(
+                "Volume: {:.0}% · drag or scroll · double-click to mute",
+                self.settings.volume * 100.
+            ));
+        if knob.dragged() {
+            self.settings.volume = (self.settings.volume - knob.drag_delta().y / (180. * scale)
+                + knob.drag_delta().x / (260. * scale))
+                .clamp(0., 1.);
+        }
+        if knob.hovered() {
+            self.settings.volume = (self.settings.volume
+                + ui.input(|i| i.smooth_scroll_delta.y) * 0.002)
+                .clamp(0., 1.);
+        }
+        if knob.double_clicked() {
+            self.mute = !self.mute;
+        }
+        let a = 2.3561945 + self.settings.volume * std::f32::consts::PI * 1.5;
+        let d = vec2(a.cos(), a.sin());
+        p.line_segment(
+            [center + d * radius * 0.72, center + d * radius * 0.87],
+            Stroke::new(1.4 * scale, Color32::from_rgb(213, 214, 193)),
+        );
+        if self
+            .button(ui, rect(1066., 309., 43., 40.), "settings", false)
+            .clicked()
+        {
+            self.show_settings = true;
+        }
+        if !snap.error.is_empty() {
+            self.error = snap.error.clone();
+        }
+        self.engine.volume(if self.mute || !self.power {
+            0.
+        } else {
+            self.settings.volume
+        });
+        if (knob.drag_stopped() || knob.hovered() && ui.input(|i| i.smooth_scroll_delta.y != 0.))
+            && let Err(e) = self.settings.save()
+        {
+            self.error = e.to_string();
+        }
+        if ui.input(|i| i.modifiers.command && i.key_pressed(Key::M)) {
+            if self.settings.minimize_to_tray {
+                self.minimize_to_tray(&ctx);
+            } else {
+                ctx.send_viewport_cmd(ViewportCommand::Minimized(true));
+            }
+        }
+        self.window_controls(ui);
+        if self.show_settings {
+            self.settings(&ctx);
+        }
+        if self.start.elapsed() > Duration::from_secs(4)
+            && let Some(path) = self.capture.take()
+        {
+            ctx.request_screenshot(move |frame| {
+                let bytes: Vec<u8> = frame.pixels.iter().flat_map(|c| c.to_array()).collect();
+                if let Err(e) = image::save_buffer(
+                    &path,
+                    &bytes,
+                    frame.size[0] as u32,
+                    frame.size[1] as u32,
+                    image::ColorType::Rgba8,
+                ) {
+                    log::error!("Capture: {e}");
+                } else {
+                    log::info!("Saved native front panel to {}", path.display());
+                }
+            });
+        }
+    }
+
+    fn on_exit(&mut self, _: Option<&eframe::glow::Context>) {
+        if let Err(e) = self.settings.save() {
+            log::error!("save settings: {e}");
+        }
+        self.engine.stop();
+    }
+}

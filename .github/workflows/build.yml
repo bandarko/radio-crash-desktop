@@ -1,0 +1,34 @@
+name: Native builds
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo fmt --check
+      - run: cargo test --locked --target ${{ matrix.target }}
+      - run: cargo clippy --locked --target ${{ matrix.target }} -- -D warnings
+      - if: runner.os == 'macOS'
+        run: scripts/package-macos.sh ${{ matrix.target }}
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/package-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radio-crash-${{ matrix.target }}
+          path: |
+            dist/

@@ -1,0 +1,14 @@
+/target/
+/dist/
+*.log
+.DS_Store
+
+__pycache__/
+*.pyc
+*.key
+*.p12
+*.p8
+*.csr
+*.cer
+*.mobileprovision
+.env

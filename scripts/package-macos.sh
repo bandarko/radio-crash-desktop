@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+TARGET="${1:-aarch64-apple-darwin}"
+_rc_build_dir="${CARGO_TARGET_DIR:-target}"
+cargo build --release --locked --target "$TARGET"
+APP="dist/$TARGET/Radio Crash Desktop.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$_rc_build_dir/$TARGET/release/radio-crash-desktop" "$APP/Contents/MacOS/RadioCrashDesktop"
+cp assets/RadioCrash.icns "$APP/Contents/Resources/RadioCrash.icns"
+cp assets/*OFL.txt assets/*.prompt.txt UI-ASSETS.md DEPENDENCIES.md THIRD_PARTY_NOTICES.md RELEASE-NOTES.md LICENSE "$APP/Contents/Resources/"
+cp -R licenses "$APP/Contents/Resources/"
+cp assets/Info.plist "$APP/Contents/Info.plist"
+sh scripts/sign-macos.sh "$APP"
+echo "$APP"

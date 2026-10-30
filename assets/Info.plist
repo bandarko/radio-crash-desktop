@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleExecutable</key><string>RadioCrashDesktop</string>
+<key>CFBundleIdentifier</key><string>net.radiocrash.desktop</string>
+<key>CFBundleName</key><string>Radio Crash Desktop</string>
+<key>CFBundleDisplayName</key><string>Radio Crash Desktop</string>
+<key>CFBundleVersion</key><string>101</string>
+<key>CFBundleShortVersionString</key><string>1.0.0</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleSupportedPlatforms</key><array><string>MacOSX</string></array>
+<key>CFBundleIconFile</key><string>RadioCrash</string>
+<key>LSMinimumSystemVersion</key><string>11.0</string>
+<key>NSHighResolutionCapable</key><true/>
+<key>NSPrincipalClass</key><string>NSApplication</string>
+<key>LSApplicationCategoryType</key><string>public.app-category.music</string>
+</dict></plist>
