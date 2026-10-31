@@ -118,7 +118,7 @@ impl Tray {
             self.update_label = label;
         }
     }
-    pub fn update(&mut self, meters: &Meters, running: bool) {
+    pub fn update(&mut self, meters: &Meters, running: bool, reference: f32) {
         let elapsed = self.last.elapsed();
         if elapsed < Duration::from_millis(30) {
             return;
@@ -133,7 +133,7 @@ impl Tray {
                 120.,
             );
         }
-        let frame = Frame::render(
+        let frame = Frame::render_calibrated(
             self.levels,
             if running {
                 meters.held_peaks
@@ -141,6 +141,7 @@ impl Tray {
                 [-60.; 2]
             },
             Self::layout(),
+            reference,
         );
         if frame.rgba == self.frame.rgba {
             return;

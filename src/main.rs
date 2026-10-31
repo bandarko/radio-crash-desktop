@@ -22,7 +22,11 @@ fn main() -> anyhow::Result<()> {
         if let Ok(url) = std::env::var("RC_STREAM_URL") {
             s.stream_url = url;
         }
-        engine.volume(0.1);
+        engine.volume(if std::env::args().any(|a| a == "--muted") {
+            0.
+        } else {
+            0.1
+        });
         engine.start(s);
         for _ in 0..seconds {
             std::thread::sleep(std::time::Duration::from_secs(1));

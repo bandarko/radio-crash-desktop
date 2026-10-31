@@ -1,3 +1,22 @@
+# Radio Crash Desktop 1.1.1
+
+31. listopada 2026.
+
+- Novi zadani VU profil Radio Crash Hi-Fi: 0 VU = -15 dBFS. Signal od -11 dBFS prikazuje +4, a jači signal od -7 dBFS prikazuje +8. Vrijednosti i dalje prate stvarni zvuk.
+- Dodano fino podešavanje VU osjetljivosti. Glavni i tray instrumenti sada koriste potpuno istu odabranu kalibraciju.
+- Stari digitalni zadani profil iz 1.1.0 jednom se prebacuje na Hi-Fi. Digital i Studio ostaju dostupni u Settings. Jednom spremljen osobni izbor više se ne mijenja pri pokretanju.
+- Glasnoća, dekoder, RMS odziv, FFT, HD iluminator i natpis SINCE 1986 nisu promijenjeni ovom kalibracijom.
+
+Mac aplikacija potpisana je Developer ID certifikatom i notarizirana. Uobičajeni prozor macOS-a koji pri prvom otvaranju traži Open za aplikaciju preuzetu s interneta može se pojaviti i kod potpisanih aplikacija. [Appleovo objašnjenje](https://support.apple.com/en-us/102445).
+
+Windows EXE nije Authenticode potpisan. Windows reprodukcija nije ručno provjerena.
+
+## English
+
+The recommended VU calibration is now 0 VU = -15 dBFS, giving +4 VU for -11 dBFS programme RMS and +8 VU for -7 dBFS. Fine sensitivity adjustment is available, and tray meters share the main panel's reference. A one-time migration corrects the 1.1.0 digital default while retaining Studio/custom values and future explicit choices. Audio gain, decoding, RMS ballistics and FFT are unchanged. The Mac app is Developer ID signed and notarized; the standard first-open confirmation can still appear. Windows playback remains manually unverified and its executable is unsigned.
+
+---
+
 # Radio Crash Desktop 1.1.0
 
 31. listopada 2026.

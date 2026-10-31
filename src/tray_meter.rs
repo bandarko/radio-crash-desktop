@@ -39,6 +39,14 @@ impl Frame {
         }
     }
     pub fn render(levels: [f32; 2], peaks: [f32; 2], layout: Layout) -> Self {
+        Self::render_calibrated(levels, peaks, layout, crate::dsp::VU_REFERENCE_DBFS)
+    }
+    pub fn render_calibrated(
+        levels: [f32; 2],
+        peaks: [f32; 2],
+        layout: Layout,
+        reference: f32,
+    ) -> Self {
         let (width, height) = match layout {
             Layout::MenuBar => (80, 40),
             Layout::NotificationArea => (32, 32),
@@ -49,8 +57,9 @@ impl Frame {
             rgba: vec![0; (width * height * 4) as usize],
         };
         for c in 0..2 {
-            let position = crate::dsp::vu_position(crate::dsp::vu_relative(levels[c]));
-            let peak = crate::dsp::vu_peak_index(peaks[c]).map(|i| i as f32 / 39.);
+            let position = crate::dsp::vu_position(crate::dsp::vu_calibrated(levels[c], reference));
+            let peak =
+                crate::dsp::calibrated_peak_index(peaks[c], reference).map(|i| i as f32 / 39.);
             match layout {
                 Layout::MenuBar => {
                     let y = 3 + c as u32 * 20;

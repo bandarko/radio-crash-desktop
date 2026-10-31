@@ -44,17 +44,14 @@ pub fn follow(current: f32, target: f32, seconds: f32, decay_db_per_second: f32)
         target.max(current - decay_db_per_second * seconds.clamp(0., 0.1))
     }
 }
-/// A selectable zero reference. Default 0 means an honest digital dBFS display.
-/// Studio calibration can use -18 dBFS without changing the audio gain.
-pub const VU_REFERENCE_DBFS: f32 = 0.;
+/// Radio Crash Hi-Fi display calibration; never applied to audio gain.
+/// A programme RMS of -11 dBFS reads +4 VU, and -7 dBFS reads +8 VU.
+pub const VU_REFERENCE_DBFS: f32 = -15.;
 pub const VU_SCALE: [f32; 40] = [
     -40., -35., -30., -25., -22., -20., -18., -16., -14., -12., -11., -10., -9., -8., -7., -6.,
     -5., -4., -3., -2., -1., 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
     16., 17., 18.,
 ];
-pub fn vu_relative(dbfs: f32) -> f32 {
-    dbfs - VU_REFERENCE_DBFS
-}
 pub fn vu_calibrated(dbfs: f32, reference: f32) -> f32 {
     dbfs - reference
 }
@@ -69,9 +66,6 @@ pub fn vu_position(relative: f32) -> f32 {
         }
     }
     1.
-}
-pub fn vu_peak_index(dbfs: f32) -> Option<usize> {
-    calibrated_peak_index(dbfs, VU_REFERENCE_DBFS)
 }
 pub fn calibrated_peak_index(dbfs: f32, reference: f32) -> Option<usize> {
     let relative = vu_calibrated(dbfs, reference);
@@ -275,16 +269,20 @@ mod tests {
     }
     #[test]
     fn relative_vu_reference_and_endpoints() {
-        assert_eq!(vu_relative(-18.), -18.);
-        assert_eq!(vu_relative(0.), 0.);
+        assert_eq!(vu_calibrated(-15., VU_REFERENCE_DBFS), 0.);
+        assert_eq!(vu_calibrated(-11., VU_REFERENCE_DBFS), 4.);
+        assert_eq!(vu_calibrated(-7., VU_REFERENCE_DBFS), 8.);
+        assert_eq!(vu_calibrated(0., VU_REFERENCE_DBFS), 15.);
+        assert_eq!(vu_calibrated(-8., 0.), -8.);
         assert_eq!(vu_calibrated(-18., -18.), 0.);
         assert_eq!(vu_calibrated(0., -18.), 18.);
         assert_eq!(vu_position(-40.), 0.);
         assert_eq!(vu_position(18.), 1.);
-        assert_eq!(vu_peak_index(0.), Some(21));
+        assert_eq!(calibrated_peak_index(0., 0.), Some(21));
+        assert_eq!(calibrated_peak_index(0., VU_REFERENCE_DBFS), Some(36));
         assert_eq!(calibrated_peak_index(0., -18.), Some(39));
-        assert_eq!(vu_peak_index(-60.), None);
-        assert_eq!(vu_peak_index(-18.), Some(6));
+        assert_eq!(calibrated_peak_index(-60., VU_REFERENCE_DBFS), None);
+        assert_eq!(calibrated_peak_index(-18., 0.), Some(6));
         for (i, v) in VU_SCALE.iter().enumerate() {
             assert_eq!(calibrated_peak_index(*v - 18., -18.), Some(i));
         }

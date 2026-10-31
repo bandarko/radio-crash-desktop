@@ -2,7 +2,7 @@
 
 Native Rust internet radio receiver for macOS and Windows, with a photographic black brushed-aluminium fascia and live cyan VFD instruments. eframe/egui paints all live display content and interactive control states. CPAL drives CoreAudio/WASAPI; Symphonia decodes AAC-LC and MP3. No webview, browser engine or external decoder executable is bundled.
 
-Version **1.1.0**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
+Version **1.1.1**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
 
 ![Radio Crash Desktop native receiver](docs/receiver.png)
 
@@ -29,7 +29,9 @@ The source fascia is an original generated photographic asset with blank, unlit 
 
 All artists/titles, status, technical properties, VU bars, peak markers, FFT bars and control states are drawn live. No radio measurements or fake animated levels are baked into the image. Phosphor bloom, bright filament cores, dim inactive segments and an optical reflection layer simulate VFD glass. Long track text holds at the beginning for four seconds when metadata changes, then scrolls within its zone.
 
-The stereo scale remains **-40 to +18 dB**, with **Digital: 0 dBFS** as the default zero reference. No +18 dB display boost is added. Settings also offers **Studio: -18 dBFS**, explicitly labeled as a relative calibration. This never changes audio gain. Sample peaks use the same chosen reference and remain independently visible above the RMS body.
+The stereo scale remains **-40 to +18 VU**, with the recommended **Radio Crash Hi-Fi reference: 0 VU = -15 dBFS**. A programme RMS of -11 dBFS therefore reads +4 VU, and -7 dBFS reads +8 VU. This is a fixed, explicitly labeled display calibration, not an audio gain change, adaptive animation or forced meter limit. The 1.1.0 digital default is migrated once to Hi-Fi. Existing Studio/custom profiles are preserved; after that migration an explicit Digital choice remains Digital.
+
+Settings retains Digital (0 dBFS) and Studio (-18 dBFS), plus a fine VU sensitivity control. The main and tray meters use the same selected reference. The panel caption always shows the actual reference, including custom values. Independent sample peak hold is not clipped to a cosmetic target. The spectrum continues to report absolute band RMS dBFS and is unaffected by VU calibration.
 
 The RMS detector continuously integrates PCM energy with a 50 ms time constant, avoiding exaggerated 256-frame loudness jumps while retaining a quick response. At 50 ms, a steady step is within 2 dB of its settled level. Peak hold still observes each 256-frame block, retains transients for 1.5 seconds and then decays 12 dB/s. Measurements are taken before volume gain from the PCM actually consumed by the output callback.
 

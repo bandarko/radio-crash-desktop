@@ -1,3 +1,10 @@
+# Verification - 1.1.1 calibration patch
+
+- Tests cover -11 dBFS -> +4 VU, -7 dBFS -> +8 VU, preserved scale/peak headroom, and one-time settings migration that preserves later explicit Digital and legacy Studio/custom choices.
+- A 25-second muted CoreAudio run used actual decoded/consumed Radio Crash PCM. One-second snapshots gave median RMS L -11.28 / R -11.01 dBFS and sampled maxima L -7.59 / R -7.76 dBFS. The chosen fixed -15 reference maps those medians to +3.72 / +3.99 VU and sampled maxima to +7.41 / +7.24. Programme content and transients naturally vary. Audio output gain was zero only for this isolated smoke run.
+- The main panel and both tray layouts receive the same reference. RMS integration and FFT normalization are unchanged from 1.1.0.
+- Mac signing/notarization, package hashes and native CI results are recorded in the release manifest. Windows playback remains manually unverified.
+
 # Verification - 1.1.0
 
 - 24 deterministic tests pass, including calibrated RMS band levels, independent stereo, 50 ms RMS step/impulse response, all ten FFT tone bands, ETag/304 update checks and stable-version/URL handling.

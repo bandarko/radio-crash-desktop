@@ -376,10 +376,14 @@ impl RadioApp {
                     ui.separator();
                     ui.label("Skin: VFD Digital - Black Aluminium");
                     ui.checkbox(&mut self.settings.fast_vu,"Faster VU decay");
-                    ComboBox::from_label("VU zero reference").selected_text(if self.settings.vu_reference_dbfs == 0. {"Digital: 0 dBFS"} else {"Studio: -18 dBFS"}).show_ui(ui,|ui|{
+                    ComboBox::from_label("VU calibration").selected_text(match self.settings.vu_reference_dbfs {0.=>"Digital: 0 dBFS".to_owned(),-15.=>"Radio Crash Hi-Fi: -15 dBFS".to_owned(),-18.=>"Studio: -18 dBFS".to_owned(),other=>format!("Custom: {other} dBFS")}).show_ui(ui,|ui|{
+                        ui.selectable_value(&mut self.settings.vu_reference_dbfs,-15.,"Radio Crash Hi-Fi (recommended)");
                         ui.selectable_value(&mut self.settings.vu_reference_dbfs,0.,"Digital: 0 dBFS (actual level)");
                         ui.selectable_value(&mut self.settings.vu_reference_dbfs,-18.,"Studio: -18 dBFS (relative VU)");
                     });
+                    let mut sensitivity=-self.settings.vu_reference_dbfs;
+                    if ui.add(Slider::new(&mut sensitivity,0.0..=24.0).step_by(0.5).text("VU sensitivity · dB")).changed(){self.settings.vu_reference_dbfs=-sensitivity;}
+                    ui.small("Meter display only; audio volume is unchanged. Main and tray meters use the same calibration.");
                     ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
                     ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD SOUND threshold · kbps"));
                     ui.small("HD SOUND is a Radio Crash quality badge based on measured bitrate.\nMeters show the stream level before volume adjustment.");
@@ -497,7 +501,11 @@ impl eframe::App for RadioApp {
         };
         let action = if let Some(tray) = &mut self.tray {
             tray.set_update(update_version.as_deref());
-            tray.update(&snapshot.meters, self.engine.running());
+            tray.update(
+                &snapshot.meters,
+                self.engine.running(),
+                self.settings.vu_reference_dbfs,
+            );
             tray.poll()
         } else {
             platform::TrayAction::None
@@ -764,17 +772,12 @@ impl eframe::App for RadioApp {
             }
         }
         text(&p, pt(99., 257.), "RMS", 7.8 * scale, DIM);
-        text(
-            &p,
-            pt(245., 257.),
-            if self.settings.vu_reference_dbfs == 0. {
-                "DIGITAL dBFS"
-            } else {
-                "0 VU = -18 dBFS"
-            },
-            7.8 * scale,
-            DIM,
-        );
+        let calibration = if self.settings.vu_reference_dbfs == 0. {
+            "DIGITAL dBFS".to_owned()
+        } else {
+            format!("0 VU = {} dBFS", self.settings.vu_reference_dbfs)
+        };
+        text(&p, pt(245., 257.), &calibration, 7.8 * scale, DIM);
         let status = if !self.power {
             "POWER OFF"
         } else {

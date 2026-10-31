@@ -13,6 +13,7 @@ pub struct Settings {
     pub spectrum: bool,
     pub fast_vu: bool,
     pub vu_reference_dbfs: f32,
+    pub vu_calibration_version: u8,
     pub auto_updates: bool,
     pub hd_kbps: u32,
     pub window_width: f32,
@@ -31,7 +32,8 @@ impl Default for Settings {
             minimize_to_tray: false,
             spectrum: true,
             fast_vu: false,
-            vu_reference_dbfs: 0.,
+            vu_reference_dbfs: crate::dsp::VU_REFERENCE_DBFS,
+            vu_calibration_version: 1,
             auto_updates: true,
             hd_kbps: 192,
             window_width: 780.,
@@ -58,18 +60,30 @@ impl Settings {
     pub fn load() -> Self {
         let mut s: Self = std::fs::read(Self::path())
             .ok()
-            .and_then(|b| serde_json::from_slice(&b).ok())
+            .and_then(|b| Self::decode(&b))
             .unwrap_or_default();
         s.volume = s.volume.clamp(0., 1.);
         s.vu_reference_dbfs = if s.vu_reference_dbfs.is_finite() {
             s.vu_reference_dbfs.clamp(-24., 0.)
         } else {
-            0.
+            crate::dsp::VU_REFERENCE_DBFS
         };
         let size = window_size(s.window_width, s.window_height, s.lock_aspect);
         s.window_width = size[0];
         s.window_height = size[1];
         s
+    }
+    fn decode(bytes: &[u8]) -> Option<Self> {
+        let value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
+        let old_calibration = value["vu_calibration_version"].as_u64().unwrap_or(0) < 1;
+        let mut s: Self = serde_json::from_value(value).ok()?;
+        // One-time correction of 1.1.0's default digital profile. Once saved,
+        // an explicit choice of Digital remains Digital on later launches.
+        if old_calibration && s.vu_reference_dbfs == 0. {
+            s.vu_reference_dbfs = crate::dsp::VU_REFERENCE_DBFS;
+        }
+        s.vu_calibration_version = s.vu_calibration_version.max(1);
+        Some(s)
     }
     pub fn save(&self) -> anyhow::Result<()> {
         let p = Self::path();
@@ -108,6 +122,21 @@ mod tests {
         assert_eq!(s.volume, 0.35);
         assert_eq!(s.window_width, 780.);
         assert!(s.lock_aspect);
+    }
+    #[test]
+    fn hifi_migration_is_once_and_preserves_explicit_profiles() {
+        let old = Settings::decode(br#"{"vu_reference_dbfs":0,"volume":0.4}"#).unwrap();
+        assert_eq!(old.vu_reference_dbfs, -15.);
+        assert_eq!(old.volume, 0.4);
+        let digital =
+            Settings::decode(br#"{"vu_reference_dbfs":0,"vu_calibration_version":1}"#).unwrap();
+        assert_eq!(digital.vu_reference_dbfs, 0.);
+        let studio = Settings::decode(br#"{"vu_reference_dbfs":-18}"#).unwrap();
+        assert_eq!(studio.vu_reference_dbfs, -18.);
+        let custom = Settings::decode(br#"{"vu_reference_dbfs":-13}"#).unwrap();
+        assert_eq!(custom.vu_reference_dbfs, -13.);
+        let saved = serde_json::to_vec(&old).unwrap();
+        assert_eq!(Settings::decode(&saved).unwrap().vu_reference_dbfs, -15.);
     }
     #[test]
     fn custom_dimensions_and_ratio() {

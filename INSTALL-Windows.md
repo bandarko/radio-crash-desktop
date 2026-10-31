@@ -1,6 +1,6 @@
 # Radio Crash Desktop — Windows x64
 
-Verzija 1.1.0 · Namijenjeno za Windows 10/11, 64-bitni x64 sustav.
+Verzija 1.1.1 · Namijenjeno za Windows 10/11, 64-bitni x64 sustav.
 
 1. Raspakirajte cijeli ZIP u vlastitu mapu, primjerice Documents/Radio Crash Desktop.
 2. Pokrenite **RadioCrashDesktop.exe** i pritisnite Power ili Play.
