@@ -1,7 +1,20 @@
 use crate::{audio::Engine, dsp::Meters, platform, settings::Settings, skins::*};
 use eframe::egui::*;
 use std::time::{Duration, Instant};
+fn minimize_screw(ui: &mut Ui, rect: Rect) -> Response {
+    ui.interact(
+        rect,
+        Id::unique("upper-left-minimize-screw"),
+        Sense::click(),
+    )
+    .on_hover_cursor(CursorIcon::PointingHand)
+    .on_hover_text("Minimize to tray: live L/R meters. Click the tray icon to restore.")
+}
 pub struct RadioApp {
+    updater: crate::updates::Checker,
+    show_update: bool,
+    update_seen: Option<crate::updates::Version>,
+    manual_update: bool,
     materials: Materials,
     observed_window: Vec2,
     resize_save: Option<Instant>,
@@ -58,6 +71,10 @@ impl RadioApp {
             engine.start(settings.clone());
         }
         Self {
+            updater: crate::updates::Checker::new(),
+            show_update: false,
+            update_seen: None,
+            manual_update: false,
             materials,
             observed_window: Vec2::ZERO,
             resize_save: None,
@@ -320,10 +337,11 @@ impl RadioApp {
         ctx.show_viewport_immediate(
             ViewportId::from_hash_of("receiver-settings"),
             ViewportBuilder::default().with_title("Radio Crash · Receiver settings")
-                .with_inner_size([540., 620.]).with_resizable(false).with_decorations(true),
+                .with_inner_size([560., 650.]).with_min_inner_size([520.,420.]).with_resizable(true).with_decorations(true),
             |ctx, _| {
                 closed = ctx.input(|i| i.viewport().close_requested());
                 CentralPanel::default().show(ctx, |ui| {
+                    ScrollArea::vertical().id_salt("receiver-settings-scroll").max_height((ui.available_height()-65.).max(180.)).show(ui,|ui|{
                     ui.heading("Receiver settings");
                     ui.add_space(8.);
                     ui.label("Stream URL");
@@ -356,11 +374,28 @@ impl RadioApp {
                     ui.checkbox(&mut self.settings.lock_aspect,"Keep receiver proportions");
                     ui.small("Drag the right/bottom edge or lower-right corner to resize. Size is remembered.");
                     ui.separator();
-                    ui.label("Skin: VFD Digital — Black Aluminium");
+                    ui.label("Skin: VFD Digital - Black Aluminium");
                     ui.checkbox(&mut self.settings.fast_vu,"Faster VU decay");
+                    ComboBox::from_label("VU zero reference").selected_text(if self.settings.vu_reference_dbfs == 0. {"Digital: 0 dBFS"} else {"Studio: -18 dBFS"}).show_ui(ui,|ui|{
+                        ui.selectable_value(&mut self.settings.vu_reference_dbfs,0.,"Digital: 0 dBFS (actual level)");
+                        ui.selectable_value(&mut self.settings.vu_reference_dbfs,-18.,"Studio: -18 dBFS (relative VU)");
+                    });
                     ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
                     ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD SOUND threshold · kbps"));
                     ui.small("HD SOUND is a Radio Crash quality badge based on measured bitrate.\nMeters show the stream level before volume adjustment.");
+                    ui.separator();
+                    ui.label(concat!("Radio Crash Desktop ",env!("CARGO_PKG_VERSION")));
+                    ui.checkbox(&mut self.settings.auto_updates,"Automatically check for updates");
+                    ui.small("Checks GitHub at launch or every 6 hours. No account or listening data is sent.");
+                    if ui.add_enabled(!self.updater.busy(),Button::new("Check for updates now")).clicked(){self.updater.request();self.manual_update=true;self.update_seen=None;}
+                    ui.label(match &self.updater.state {
+                        crate::updates::State::Idle=>"Updates have not been checked yet".into(),
+                        crate::updates::State::Checking=>"Checking for updates...".into(),
+                        crate::updates::State::Current=>"You have the latest version".into(),
+                        crate::updates::State::Available(r)=>format!("New version available: {}",r.version.text()),
+                        crate::updates::State::Failed(message)=>message.clone(),
+                    });
+                    });
                     ui.add_space(8.);
                     apply=ui.button("Save and apply").clicked();
                     if !self.error.is_empty() { ui.colored_label(Color32::LIGHT_RED,&self.error); }
@@ -417,11 +452,51 @@ impl RadioApp {
             glow(&clipped, r.min + vec2(w + 45. - offset, 0.), s, size);
         }
     }
+    fn update_notice(&mut self, ctx: &Context) {
+        if !self.show_update {
+            return;
+        }
+        let crate::updates::State::Available(release) = self.updater.state.clone() else {
+            return;
+        };
+        let mut dismiss = false;
+        Window::new("Dostupna je nova verzija").collapsible(false).resizable(false).default_width(420.).anchor(Align2::CENTER_CENTER,Vec2::ZERO).open(&mut self.show_update).show(ctx,|ui|{
+            ui.heading(format!("Radio Crash Desktop {}",release.version.text()));
+            ui.label(format!("Tvoja verzija: {}",env!("CARGO_PKG_VERSION")));
+            ui.add_space(8.);
+            ui.label("Preuzmi novi ZIP, zatvori player i zamijeni aplikaciju novom verzijom. Tvoje postavke ostaju spremljene.");
+            ui.add_space(10.);
+            ui.horizontal(|ui|{
+                if ui.button("Preuzmi novu verziju").clicked(){ctx.open_url(OpenUrl::new_tab(release.download()));dismiss=true;}
+                if ui.button("Što je novo").clicked(){ctx.open_url(OpenUrl::new_tab(release.page()));}
+                if ui.button("Kasnije").clicked(){dismiss=true;}
+            });
+        });
+        if dismiss {
+            self.show_update = false;
+        }
+    }
 }
 impl eframe::App for RadioApp {
     fn logic(&mut self, ctx: &Context, _: &mut eframe::Frame) {
+        self.updater.tick(self.settings.auto_updates);
+        if (self.settings.auto_updates || self.manual_update)
+            && let crate::updates::State::Available(release) = &self.updater.state
+            && self.update_seen != Some(release.version)
+        {
+            self.update_seen = Some(release.version);
+            self.show_update = true;
+        }
+        if !matches!(self.updater.state, crate::updates::State::Checking) {
+            self.manual_update = false;
+        }
         let snapshot = self.engine.state.lock().unwrap().clone();
+        let update_version = match &self.updater.state {
+            crate::updates::State::Available(r) => Some(r.version.text()),
+            _ => None,
+        };
         let action = if let Some(tray) = &mut self.tray {
+            tray.set_update(update_version.as_deref());
             tray.update(&snapshot.meters, self.engine.running());
             tray.poll()
         } else {
@@ -430,6 +505,16 @@ impl eframe::App for RadioApp {
         match action {
             platform::TrayAction::Restore => self.restore_from_tray(ctx),
             platform::TrayAction::Quit => ctx.send_viewport_cmd(ViewportCommand::Close),
+            platform::TrayAction::Updates => {
+                self.restore_from_tray(ctx);
+                if matches!(self.updater.state, crate::updates::State::Available(_)) {
+                    self.show_update = true;
+                } else {
+                    self.updater.request();
+                    self.manual_update = true;
+                    self.show_settings = true;
+                }
+            }
             platform::TrayAction::None => {}
         }
         if self.settings.minimize_to_tray
@@ -528,8 +613,12 @@ impl eframe::App for RadioApp {
         self.materials.paint(&p, rect(0., 0., 1200., 440.));
         self.materials
             .logo(&p, rect(94., 49., 205., 205. * 67. / 900.));
+        let screw = minimize_screw(ui, rect(14., 19., 43., 41.));
+        if screw.clicked() {
+            self.minimize_to_tray(&ctx);
+        }
         let drag = ui.interact(
-            rect(45., 30., 1110., 62.),
+            rect(62., 30., 1093., 62.),
             Id::unique("chassis-drag"),
             Sense::click_and_drag(),
         );
@@ -643,7 +732,8 @@ impl eframe::App for RadioApp {
                 17. * scale,
                 muted_display,
             );
-            let level = crate::dsp::vu_relative(self.meters.rms[c]);
+            let level =
+                crate::dsp::vu_calibrated(self.meters.rms[c], self.settings.vu_reference_dbfs);
             for (i, db) in crate::dsp::VU_SCALE.iter().enumerate() {
                 let x = 98. + i as f32 * 8.;
                 for row in 0..2 {
@@ -655,7 +745,10 @@ impl eframe::App for RadioApp {
                     );
                 }
             }
-            if let Some(index) = crate::dsp::vu_peak_index(snap.meters.held_peaks[c]) {
+            if let Some(index) = crate::dsp::calibrated_peak_index(
+                snap.meters.held_peaks[c],
+                self.settings.vu_reference_dbfs,
+            ) {
                 let x = 98. + index as f32 * 8.;
                 let marker = rect(x - 0.3, y - 7., 6.6, 3.6);
                 p.rect_filled(
@@ -671,7 +764,17 @@ impl eframe::App for RadioApp {
             }
         }
         text(&p, pt(99., 257.), "RMS", 7.8 * scale, DIM);
-        text(&p, pt(245., 257.), "0 dB REF = −18 dBFS", 7.8 * scale, DIM);
+        text(
+            &p,
+            pt(245., 257.),
+            if self.settings.vu_reference_dbfs == 0. {
+                "DIGITAL dBFS"
+            } else {
+                "0 VU = -18 dBFS"
+            },
+            7.8 * scale,
+            DIM,
+        );
         let status = if !self.power {
             "POWER OFF"
         } else {
@@ -750,7 +853,7 @@ impl eframe::App for RadioApp {
             muted_display.gamma_multiply(0.7),
         );
         text(&p, pt(1117., 129.), "Hz", 8. * scale, DIM);
-        for (y, l) in [(163., "0"), (197., "−20"), (232., "−40")] {
+        for (y, l) in [(148., "0"), (179., "−20"), (210., "−40"), (241., "−60")] {
             p.text(
                 pt(850., y),
                 Align2::RIGHT_TOP,
@@ -924,6 +1027,7 @@ impl eframe::App for RadioApp {
         if self.show_settings {
             self.settings(&ctx);
         }
+        self.update_notice(&ctx);
         if self.start.elapsed() > Duration::from_secs(4)
             && let Some(path) = self.capture.take()
         {
@@ -949,5 +1053,62 @@ impl eframe::App for RadioApp {
             log::error!("save settings: {e}");
         }
         self.engine.stop();
+    }
+}
+
+#[cfg(test)]
+mod interaction_tests {
+    use super::*;
+    #[test]
+    fn left_screw_accepts_primary_click_at_compact_and_large_sizes() {
+        for width in [560., 640., 780., 1200.] {
+            let ctx = Context::default();
+            let scale = width / 1200.;
+            let area = Rect::from_min_size(Pos2::ZERO, vec2(width, 440. * scale));
+            let r = Rect::from_min_size(pos2(14., 19.) * scale, vec2(43., 41.) * scale);
+            let point = r.center();
+            let mut clicked = false;
+            for (frame, events) in [
+                vec![],
+                vec![
+                    Event::PointerMoved(point),
+                    Event::PointerButton {
+                        pos: point,
+                        button: PointerButton::Primary,
+                        pressed: true,
+                        modifiers: Modifiers::NONE,
+                    },
+                ],
+                vec![Event::PointerButton {
+                    pos: point,
+                    button: PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Modifiers::NONE,
+                }],
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let input = RawInput {
+                    screen_rect: Some(area),
+                    time: Some(frame as f64 / 60.),
+                    events,
+                    ..Default::default()
+                };
+                let mut output = ctx.run_ui(input, |root| {
+                    CentralPanel::default().frame(Frame::NONE).show(root, |ui| {
+                        clicked |= minimize_screw(ui, r).clicked();
+                        // The chassis drag target must not steal screw clicks.
+                        ui.interact(
+                            Rect::from_min_size(pos2(62., 30.) * scale, vec2(1093., 62.) * scale),
+                            Id::unique("test-drag"),
+                            Sense::click_and_drag(),
+                        );
+                    });
+                });
+                output.textures_delta.clear();
+            }
+            assert!(clicked, "width={width}");
+        }
     }
 }

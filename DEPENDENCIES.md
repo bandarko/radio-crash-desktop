@@ -1,6 +1,6 @@
 # Resolved dependency license inventory
 
-Generated from Cargo.lock and locally resolved Cargo metadata on 2026-10-30. Includes target-specific and build dependencies. Available upstream notices are copied under `licenses/`.
+Generated from pinned Cargo.lock and cargo metadata. Includes target-specific and build dependencies. Unmodified upstream notices are copied under `licenses/`.
 
 | Package | Version | Declared license | Source |
 |---|---|---|---|
@@ -197,8 +197,8 @@ Generated from Cargo.lock and locally resolved Cargo metadata on 2026-10-30. Inc
 | libm | 0.2.16 | MIT | [upstream](https://github.com/rust-lang/compiler-builtins) |
 | libredox | 0.1.25 | MIT | [upstream](https://gitlab.redox-os.org/redox-os/libredox.git) |
 | linebender_resource_handle | 0.1.1 | Apache-2.0 OR MIT | [upstream](https://github.com/linebender/raw_resource_handle) |
-| linux-raw-sys | 0.4.15 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | [upstream](https://github.com/sunfishcode/linux-raw-sys) |
 | linux-raw-sys | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | [upstream](https://github.com/sunfishcode/linux-raw-sys) |
+| linux-raw-sys | 0.4.15 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | [upstream](https://github.com/sunfishcode/linux-raw-sys) |
 | litemap | 0.8.3 | Unicode-3.0 | [upstream](https://github.com/unicode-org/icu4x) |
 | litrs | 1.0.1 | MIT OR Apache-2.0 | [upstream](https://github.com/LukasKalbertodt/litrs) |
 | lock_api | 0.4.14 | MIT OR Apache-2.0 | [upstream](https://github.com/Amanieu/parking_lot) |
@@ -435,6 +435,7 @@ Generated from Cargo.lock and locally resolved Cargo metadata on 2026-10-30. Inc
 | wayland-sys | 0.31.11 | MIT | [upstream](https://github.com/smithay/wayland-rs) |
 | web-sys | 0.3.107 | MIT OR Apache-2.0 | [upstream](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/web-sys) |
 | web-time | 1.1.0 | MIT OR Apache-2.0 | [upstream](https://github.com/daxpedda/web-time) |
+| webbrowser | 1.2.6 | MIT OR Apache-2.0 | [upstream](https://github.com/amodm/webbrowser-rs) |
 | webpki-roots | 1.0.11 | CDLA-Permissive-2.0 | [upstream](https://github.com/rustls/webpki-roots) |
 | weezl | 0.1.12 | MIT OR Apache-2.0 | [upstream](https://github.com/image-rs/weezl) |
 | wgpu | 30.0.1 | MIT OR Apache-2.0 | [upstream](https://github.com/gfx-rs/wgpu) |

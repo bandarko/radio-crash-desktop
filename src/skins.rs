@@ -7,7 +7,9 @@ pub struct Materials {
     left: TextureHandle,
     right: TextureHandle,
     logo: TextureHandle,
+    heritage: TextureHandle,
 }
+const HERITAGE_UV: [f32; 4] = [1730. / 2070., 100. / 760., 1910. / 2070., 124. / 760.];
 impl Materials {
     pub fn new(ctx: &Context) -> Self {
         let photo = image::load_from_memory(include_bytes!(
@@ -72,7 +74,30 @@ impl Materials {
             ),
             TextureOptions::LINEAR,
         );
-        Self { left, right, logo }
+        // Composite only the corrected year. All other original pixels and the
+        // existing HD lens stay identical to the approved 1.0 fascia.
+        let year = image::load_from_memory(include_bytes!(
+            "../assets/receiver-header-since-1986-source.png"
+        ))
+        .expect("year artwork")
+        .to_rgba8();
+        let [l, t, r, b] = HERITAGE_UV;
+        let x = (l * year.width() as f32).round() as u32;
+        let y = (t * year.height() as f32).round() as u32;
+        let w = ((r - l) * year.width() as f32).round() as u32;
+        let h = ((b - t) * year.height() as f32).round() as u32;
+        let patch = image::imageops::crop_imm(&year, x, y, w, h).to_image();
+        let heritage = ctx.load_texture(
+            "since-1986",
+            ColorImage::from_rgba_unmultiplied([w as usize, h as usize], patch.as_raw()),
+            TextureOptions::LINEAR,
+        );
+        Self {
+            left,
+            right,
+            logo,
+            heritage,
+        }
     }
     pub fn logo(&self, p: &Painter, r: Rect) {
         let uv = Rect::from_min_max(pos2(25. / 960., 97. / 264.), pos2(925. / 960., 164. / 264.));
@@ -98,6 +123,16 @@ impl Materials {
         p.image(
             self.right.id(),
             Rect::from_min_max(pos2(x, r.top()), r.max),
+            uv,
+            Color32::WHITE,
+        );
+        let [l, t, rr, b] = HERITAGE_UV;
+        p.image(
+            self.heritage.id(),
+            Rect::from_min_max(
+                pos2(r.left() + r.width() * l, r.top() + r.height() * t),
+                pos2(r.left() + r.width() * rr, r.top() + r.height() * b),
+            ),
             uv,
             Color32::WHITE,
         );

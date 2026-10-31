@@ -44,9 +44,9 @@ pub fn follow(current: f32, target: f32, seconds: f32, decay_db_per_second: f32)
         target.max(current - decay_db_per_second * seconds.clamp(0., 0.1))
     }
 }
-/// Radio Crash's relative level scale: 0 dB reference is -18 dBFS.
-/// This is display calibration, never audio gain; +18 denotes digital full scale.
-pub const VU_REFERENCE_DBFS: f32 = -18.;
+/// A selectable zero reference. Default 0 means an honest digital dBFS display.
+/// Studio calibration can use -18 dBFS without changing the audio gain.
+pub const VU_REFERENCE_DBFS: f32 = 0.;
 pub const VU_SCALE: [f32; 40] = [
     -40., -35., -30., -25., -22., -20., -18., -16., -14., -12., -11., -10., -9., -8., -7., -6.,
     -5., -4., -3., -2., -1., 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
@@ -54,6 +54,9 @@ pub const VU_SCALE: [f32; 40] = [
 ];
 pub fn vu_relative(dbfs: f32) -> f32 {
     dbfs - VU_REFERENCE_DBFS
+}
+pub fn vu_calibrated(dbfs: f32, reference: f32) -> f32 {
+    dbfs - reference
 }
 pub fn vu_position(relative: f32) -> f32 {
     if relative <= VU_SCALE[0] {
@@ -68,11 +71,38 @@ pub fn vu_position(relative: f32) -> f32 {
     1.
 }
 pub fn vu_peak_index(dbfs: f32) -> Option<usize> {
-    let relative = vu_relative(dbfs);
+    calibrated_peak_index(dbfs, VU_REFERENCE_DBFS)
+}
+pub fn calibrated_peak_index(dbfs: f32, reference: f32) -> Option<usize> {
+    let relative = vu_calibrated(dbfs, reference);
     if !relative.is_finite() || relative < VU_SCALE[0] {
         return None;
     }
     Some((vu_position(relative) * (VU_SCALE.len() - 1) as f32).round() as usize)
+}
+/// Continuous 50 ms RMS energy integration, independent of packet/block size.
+/// Sample peaks remain on the separate fast peak-hold path.
+pub struct RmsMeter {
+    energy: [f64; 2],
+    alpha: f64,
+}
+impl RmsMeter {
+    pub fn new(rate: u32) -> Self {
+        Self {
+            energy: [0.; 2],
+            alpha: 1. - (-1. / (rate.max(1) as f64 * 0.05)).exp(),
+        }
+    }
+    pub fn observe(&mut self, frames: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
+        let (_, peaks) = levels(frames);
+        for f in frames {
+            for (c, sample) in f.iter().enumerate() {
+                let power = (*sample as f64).powi(2);
+                self.energy[c] += self.alpha * (power - self.energy[c]);
+            }
+        }
+        (self.energy.map(|v| db(v.max(0.).sqrt() as f32)), peaks)
+    }
 }
 /// Sample-clock peak hold runs before the GUI, preserving even sub-frame transients.
 pub struct PeakHold {
@@ -107,6 +137,7 @@ pub struct Analyzer {
     buf: Vec<Complex<f32>>,
     scratch: Vec<Complex<f32>>,
     window: Vec<f32>,
+    window_energy: f32,
 }
 fn db(v: f32) -> f32 {
     (20. * v.max(0.000001).log10()).max(-60.)
@@ -115,13 +146,16 @@ impl Analyzer {
     pub fn new() -> Self {
         let fft = FftPlanner::new().plan_fft_forward(N);
         let scratch = vec![Complex::default(); fft.get_inplace_scratch_len()];
+        let window: Vec<f32> = (0..N)
+            .map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / (N - 1) as f32).cos())
+            .collect();
+        let window_energy = window.iter().map(|v| v * v).sum();
         Self {
             fft,
             buf: vec![Complex::default(); N],
             scratch,
-            window: (0..N)
-                .map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / (N - 1) as f32).cos())
-                .collect(),
+            window,
+            window_energy,
         }
     }
     pub fn analyze(&mut self, frames: &[[f32; 2]], rate: u32) -> Meters {
@@ -163,7 +197,9 @@ impl Analyzer {
                 .max(lo)
                 .min(N / 2 - 1);
             let power = powers[lo..=hi].iter().sum::<f32>();
-            m.spectrum[b] = db((power / 1.5).sqrt() * 4. / N as f32);
+            // One-sided Parseval power, compensated for actual Hann energy.
+            // Band units are stereo-average RMS dBFS, not peak amplitude.
+            m.spectrum[b] = db((2. * power / (N as f32 * self.window_energy)).sqrt());
         }
         m
     }
@@ -239,19 +275,75 @@ mod tests {
     }
     #[test]
     fn relative_vu_reference_and_endpoints() {
-        assert_eq!(vu_relative(-18.), 0.);
-        assert_eq!(vu_relative(0.), 18.);
+        assert_eq!(vu_relative(-18.), -18.);
+        assert_eq!(vu_relative(0.), 0.);
+        assert_eq!(vu_calibrated(-18., -18.), 0.);
+        assert_eq!(vu_calibrated(0., -18.), 18.);
         assert_eq!(vu_position(-40.), 0.);
         assert_eq!(vu_position(18.), 1.);
-        assert_eq!(vu_peak_index(0.), Some(39));
+        assert_eq!(vu_peak_index(0.), Some(21));
+        assert_eq!(calibrated_peak_index(0., -18.), Some(39));
         assert_eq!(vu_peak_index(-60.), None);
-        assert_eq!(vu_peak_index(-18.), Some(21));
+        assert_eq!(vu_peak_index(-18.), Some(6));
         for (i, v) in VU_SCALE.iter().enumerate() {
-            assert_eq!(vu_peak_index(*v - 18.), Some(i));
+            assert_eq!(calibrated_peak_index(*v - 18., -18.), Some(i));
         }
         for pair in VU_SCALE.windows(2) {
             assert!(vu_position(pair[0]) < vu_position(pair[1]));
         }
+    }
+    #[test]
+    fn spectrum_has_absolute_rms_calibration() {
+        let frames: Vec<_> = (0..N)
+            .map(|i| {
+                let x = (std::f32::consts::TAU * 1125. * i as f32 / 48000.).sin() * 0.25;
+                [x, x]
+            })
+            .collect();
+        let measured = Analyzer::new().analyze(&frames, 48000);
+        assert!((measured.spectrum[5] - db(0.25 / 2f32.sqrt())).abs() < 0.02);
+        let left_only: Vec<_> = frames.iter().map(|f| [f[0], 0.]).collect();
+        let left = Analyzer::new().analyze(&left_only, 48000);
+        assert!((left.spectrum[5] - measured.spectrum[5] + 3.0103).abs() < 0.02);
+    }
+    #[test]
+    fn every_frequency_label_tracks_its_actual_band() {
+        let mut analyzer = Analyzer::new();
+        for (band, frequency) in BANDS.iter().enumerate() {
+            let frames: Vec<_> = (0..N)
+                .map(|i| {
+                    let x = (std::f32::consts::TAU * frequency * i as f32 / 48000.).sin() * 0.2;
+                    [x, x]
+                })
+                .collect();
+            let measured = analyzer.analyze(&frames, 48000);
+            let strongest = measured
+                .spectrum
+                .iter()
+                .enumerate()
+                .max_by(|a, b| a.1.total_cmp(b.1))
+                .unwrap()
+                .0;
+            assert_eq!(strongest, band, "frequency {frequency}");
+        }
+    }
+    #[test]
+    fn rms_is_fast_but_does_not_turn_a_transient_into_a_sustained_level() {
+        let mut meter = RmsMeter::new(48000);
+        let (at_50ms, _) = meter.observe(&vec![[0.5, 0.]; 2400]);
+        assert!((at_50ms[0] - (-8.012)).abs() < 0.02);
+        let (settled, _) = meter.observe(&vec![[0.5, 0.]; 21600]);
+        assert!((settled[0] + 6.0206).abs() < 0.01);
+        assert_eq!(settled[1], -60.);
+        let mut impulse = RmsMeter::new(48000);
+        let (body, peak) = impulse.observe(&[[1., 0.]]);
+        assert!(body[0] < -30.);
+        assert_eq!(peak[0], 0.);
+        let mut chunked = RmsMeter::new(48000);
+        for _ in 0..100 {
+            chunked.observe(&[[0.5, 0.]; 240]);
+        }
+        assert!((chunked.observe(&[]).0[0] - settled[0]).abs() < 0.001);
     }
     #[test]
     fn dsp_peak_survives_short_transient_and_decays() {

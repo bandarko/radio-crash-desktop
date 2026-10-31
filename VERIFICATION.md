@@ -1,3 +1,15 @@
+# Verification - 1.1.0
+
+- 24 deterministic tests pass, including calibrated RMS band levels, independent stereo, 50 ms RMS step/impulse response, all ten FFT tone bands, ETag/304 update checks and stable-version/URL handling.
+- The upper-left screw receives primary-button events at widths 560, 640, 780 and 1200 in the actual egui interaction system, including a neighboring drag region. The earlier header context-menu target did not cover the screws.
+- Native Apple Silicon receiver capture confirms SINCE 1986, digital VU labeling, corrected spectrum scale and the unchanged HD Radio illuminator.
+- A simulated future 1.2.0 cache in an isolated RC_CONFIG_DIR produced the actual native update-notice window. This is a QA fixture, not a published 1.2.0 release. The real GitHub API probe reported current=1.1.0, latest=1.0.0 before publication.
+- Native computer-use mouse injection into the borderless receiver returned noWindowsAvailable. Do not describe the egui pointer test as physical Mac pointer automation. Native keyboard close worked. The temporary QA app was closed; a later stale activation attempt produced a macOS not-open-anymore alert, not an application crash.
+- Native 1.1 tray lifecycle passed: 54 hidden logic ticks and 29 changed icon uploads in six seconds; ON AIR, tray_only=true, independent RMS -9.47 / -8.91 dBFS; then restore and clean exit.
+- New signing/notarization and CI are validated separately in the release manifest. Windows playback remains manually unverified.
+
+The following section preserves the 1.0 release evidence and limits.
+
 # Verification — current local build
 
 Version 1.0.0, Mac build 101, released on 2026-10-30. The owner approved the appearance and requested the first release. The evidence below does not claim native Windows playback verification.

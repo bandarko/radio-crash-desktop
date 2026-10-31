@@ -8,8 +8,13 @@ mod settings;
 mod skins;
 mod tray_meter;
 mod ui;
+mod updates;
 fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    if std::env::args().any(|a| a == "--check-update") {
+        println!("{}", updates::check_now()?);
+        return Ok(());
+    }
     if let Some(seconds) = std::env::args().skip_while(|a| a != "--smoke").nth(1) {
         let seconds = seconds.parse::<u64>()?;
         let mut engine = audio::Engine::new();

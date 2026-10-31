@@ -12,6 +12,8 @@ pub struct Settings {
     pub minimize_to_tray: bool,
     pub spectrum: bool,
     pub fast_vu: bool,
+    pub vu_reference_dbfs: f32,
+    pub auto_updates: bool,
     pub hd_kbps: u32,
     pub window_width: f32,
     pub window_height: f32,
@@ -29,6 +31,8 @@ impl Default for Settings {
             minimize_to_tray: false,
             spectrum: true,
             fast_vu: false,
+            vu_reference_dbfs: 0.,
+            auto_updates: true,
             hd_kbps: 192,
             window_width: 780.,
             window_height: 286.,
@@ -38,6 +42,14 @@ impl Default for Settings {
 }
 impl Settings {
     pub fn path() -> PathBuf {
+        // Isolated configuration for QA/portable launches, never affects the
+        // normal installed app unless explicitly set by the launching process.
+        if let Some(path) = std::env::var_os("RC_CONFIG_DIR")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+        {
+            return path.join("settings.json");
+        }
         directories::ProjectDirs::from("net", "RadioCrash", "RadioCrashDesktop")
             .expect("configuration directory")
             .config_dir()
@@ -49,6 +61,11 @@ impl Settings {
             .and_then(|b| serde_json::from_slice(&b).ok())
             .unwrap_or_default();
         s.volume = s.volume.clamp(0., 1.);
+        s.vu_reference_dbfs = if s.vu_reference_dbfs.is_finite() {
+            s.vu_reference_dbfs.clamp(-24., 0.)
+        } else {
+            0.
+        };
         let size = window_size(s.window_width, s.window_height, s.lock_aspect);
         s.window_width = size[0];
         s.window_height = size[1];

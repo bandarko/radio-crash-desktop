@@ -24,3 +24,7 @@ The edited asset has alpha outside the chassis and feet. The native root window 
 The HD RADIO emblem uses one consistent stylized Audiowide face, with its SIL OFL license in `assets/Audiowide-OFL.txt`. It is not a mixture of two typefaces. The supplied logo bitmap remains unchanged on disk; native coverage excludes the antenna, and black becomes transparent so only small white station lettering appears on aluminium.
 
 The L/R tray icon is generated deterministically in native Rust code (`tray_meter.rs`), not imagegen. Its live bars and peak caps are driven exclusively by the output-PCM DSP snapshot.
+
+## Since 1986 inscription
+
+The original v4 fascia and HD Radio lens remain unchanged. Built-in imagegen edited only the header year in `assets/receiver-header-since-1986-source.png`; its exact prompt is saved alongside it. `Materials` composites only the small year region from that image. The rest of the full generated image is not used at runtime. The engraving experiment was abandoned at the owner's request and is not included in the app or source assets.

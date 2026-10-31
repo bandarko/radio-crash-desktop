@@ -1,3 +1,28 @@
+# Radio Crash Desktop 1.1.0
+
+31. listopada 2026.
+
+- VU sada zadano prikazuje stvarni digitalni nivo, bez prethodnog pomaka od +18 dB. Skala do +18 ostaje, a studijska kalibracija dostupna je u postavkama.
+- RMS odziv smiren je 50 ms integracijom, uz brz i neovisan peak hold.
+- Ispravljena je normalizacija analizatora spektra i poravnanje njegove dB skale. Svih deset frekvencijskih pojaseva provjereno je sintetičkim tonovima.
+- Lijevi klik na lijevi gornji vijak izravno minimizira player u tray s L/R instrumentima. Klik na tray ikonu vraća prozor.
+- Dodana je automatska provjera novih verzija, prozor s obavijesti i gumb za preuzimanje. Ručna provjera nalazi se u Settings i tray izborniku.
+- Ispravljen je natpis godine u SINCE 1986. Postojeći HD Radio iluminator ostaje nepromijenjen.
+
+## Važno za korisnike 1.0.0
+
+Verzija 1.0.0 nema provjeru ažuriranja. Preuzmite i jednom ručno instalirajte 1.1.0. Nakon toga aplikacija će obavještavati o budućim stabilnim izdanjima. Postavke ostaju spremljene. Ažuriranje se preuzima iz preglednika; aplikacija se ne zamjenjuje automatski.
+
+## Provjere i ograničenja
+
+Deterministički testovi provjeravaju RMS i FFT kalibraciju, sve frekvencijske pojaseve, brzinu odziva, klik na vijak pri različitim veličinama te HTTP/ETag provjeru ažuriranja. Windows reprodukcija i dalje nije ručno provjerena; Windows EXE nije Authenticode potpisan. Podržani su izravni AAC-LC i MP3 streamovi. HD Radio je vlastita oznaka Radio Crash kvalitete, ne HD Radio/IBOC dekoder.
+
+## English
+
+Digital VU levels no longer include an implicit +18 dB offset. A fast 50 ms RMS integrator improves ballistics, while sample peak hold remains independent. Spectrum normalization now reports stereo band RMS dBFS. Left-clicking the upper-left screw minimizes directly to tray. Stable-release update notifications are available in the app, settings and tray. The station inscription is SINCE 1986; the existing HD Radio illuminator is unchanged. Version 1.0 users must install 1.1 once manually before future in-app notices can work. Windows playback has not been manually verified and the Windows executable is unsigned.
+
+---
+
 # Radio Crash Desktop 1.0.0
 
 Prvo izdanje · 30. listopada 2026.

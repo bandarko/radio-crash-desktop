@@ -291,6 +291,7 @@ fn session(
         let mut block = Vec::with_capacity(N);
         let mut vu = [[0.; 2]; 256];
         let mut vu_index = 0;
+        let mut rms_meter = crate::dsp::RmsMeter::new(output_rate);
         let mut peak_hold = crate::dsp::PeakHold::new();
         let mut analyzed_frames = 0u64;
         while !ls.load(Ordering::Relaxed) && !gs.load(Ordering::Relaxed) {
@@ -298,7 +299,7 @@ fn session(
                 vu[vu_index] = f;
                 vu_index += 1;
                 if vu_index == vu.len() {
-                    let (rms, peaks) = crate::dsp::levels(&vu);
+                    let (rms, peaks) = rms_meter.observe(&vu);
                     analyzed_frames += vu.len() as u64;
                     let held =
                         peak_hold.observe(peaks, analyzed_frames as f64 / output_rate as f64);

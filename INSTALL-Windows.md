@@ -1,6 +1,6 @@
 # Radio Crash Desktop — Windows x64
 
-Verzija 1.0.0 · Namijenjeno za Windows 10/11, 64-bitni x64 sustav.
+Verzija 1.1.0 · Namijenjeno za Windows 10/11, 64-bitni x64 sustav.
 
 1. Raspakirajte cijeli ZIP u vlastitu mapu, primjerice Documents/Radio Crash Desktop.
 2. Pokrenite **RadioCrashDesktop.exe** i pritisnite Power ili Play.
@@ -14,3 +14,7 @@ Za minimiziranje kliknite desnom tipkom na gornji dio kućišta i odaberite **Mi
 Release notes su u `RELEASE-NOTES.md`. Podaci o bibliotekama i njihovim izvornim kodovima nalaze se u `THIRD_PARTY_NOTICES.md`, `DEPENDENCIES.md` i `licenses/`.
 
 English: Extract the entire ZIP and run RadioCrashDesktop.exe. No installer is required. This executable is unsigned and Windows may warn about an unknown publisher. Windows 10/11 playback has not been manually verified. Right-click the upper chassis to minimize to live L/R notification-area meters; click the meters to restore.
+
+## Ažuriranja
+
+Za korisnike verzije 1.0.0 potrebna je jedna ručna instalacija 1.1.0. Od 1.1.0 player automatski provjerava nova stabilna izdanja. Provjera je dostupna i u Settings te tray izborniku. Za minimiziranje kliknite lijevom tipkom na lijevi gornji vijak kućišta.

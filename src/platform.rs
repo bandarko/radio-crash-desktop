@@ -18,11 +18,14 @@ pub enum TrayAction {
     None,
     Restore,
     Quit,
+    Updates,
 }
 pub struct Tray {
     icon: tray_icon::TrayIcon,
     show: tray_icon::menu::MenuId,
     quit: tray_icon::menu::MenuId,
+    updates: tray_icon::menu::MenuItem,
+    update_label: String,
     last: Instant,
     levels: [f32; 2],
     frame: Frame,
@@ -38,7 +41,9 @@ impl Tray {
         let menu = Menu::new();
         let show = MenuItem::new("Show Radio Crash", true, None);
         let quit = MenuItem::new("Quit Radio Crash", true, None);
+        let updates = MenuItem::new("Check for updates", true, None);
         menu.append(&show)?;
+        menu.append(&updates)?;
         menu.append(&quit)?;
         let frame = Frame::render([-60.; 2], [-60.; 2], Self::layout());
         let icon = TrayIconBuilder::new()
@@ -56,6 +61,8 @@ impl Tray {
             icon,
             show: show.id().clone(),
             quit: quit.id().clone(),
+            updates,
+            update_label: "Check for updates".into(),
             last: Instant::now(),
             levels: [-60.; 2],
             frame,
@@ -73,6 +80,9 @@ impl Tray {
     pub fn poll(&self) -> TrayAction {
         let mut action = TrayAction::None;
         while let Ok(event) = tray_icon::menu::MenuEvent::receiver().try_recv() {
+            if event.id == *self.updates.id() {
+                return TrayAction::Updates;
+            }
             if event.id == self.show {
                 action = TrayAction::Restore;
             }
@@ -98,6 +108,15 @@ impl Tray {
             }
         }
         action
+    }
+    pub fn set_update(&mut self, version: Option<&str>) {
+        let label = version
+            .map(|v| format!("Update available: {v}"))
+            .unwrap_or_else(|| "Check for updates".into());
+        if label != self.update_label {
+            self.updates.set_text(&label);
+            self.update_label = label;
+        }
     }
     pub fn update(&mut self, meters: &Meters, running: bool) {
         let elapsed = self.last.elapsed();

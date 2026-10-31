@@ -2,7 +2,7 @@
 
 Native Rust internet radio receiver for macOS and Windows, with a photographic black brushed-aluminium fascia and live cyan VFD instruments. eframe/egui paints all live display content and interactive control states. CPAL drives CoreAudio/WASAPI; Symphonia decodes AAC-LC and MP3. No webview, browser engine or external decoder executable is bundled.
 
-Version **1.0.0**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
+Version **1.1.0**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
 
 ![Radio Crash Desktop native receiver](docs/receiver.png)
 
@@ -19,7 +19,7 @@ The default is **780 × 286 logical desktop points**, substantially smaller than
 
 POWER switches streaming off/on. PLAY / STOP controls the continuous station. Drag or scroll over VOLUME; double-click the knob to mute. MUTE also toggles mute. The live volume value is available in the display and knob tooltip. A size-only settings change does not interrupt audio. Connection URL, metadata URL and device changes restart a playing connection.
 
-Playback continues while minimized. Right-click the upper chassis → **Minimize to tray · L/R meters** hides the receiver and leaves two animated, PCM-driven L/R meters in the macOS menu bar or Windows notification area. Left-click the meters to restore; right-click for Show Radio Crash / Quit Radio Crash. On macOS, tray-only mode also removes the Dock icon and restores it with the receiver. The optional Settings → Minimize to tray preference applies this behavior to Cmd+M / Ctrl+M and ordinary minimization; otherwise normal Dock/taskbar minimization remains available.
+Left-click the upper-left chassis screw to minimize directly to live L/R tray meters. Its hit area is separate from the chassis drag region. Playback continues while minimized. Right-click the upper chassis → **Minimize to tray · L/R meters** hides the receiver and leaves two animated, PCM-driven L/R meters in the macOS menu bar or Windows notification area. Left-click the meters to restore; right-click for Show Radio Crash / Quit Radio Crash. On macOS, tray-only mode also removes the Dock icon and restores it with the receiver. The optional Settings → Minimize to tray preference applies this behavior to Cmd+M / Ctrl+M and ordinary minimization; otherwise normal Dock/taskbar minimization remains available.
 
 Tray painting runs from `App::logic`, not the main window's paint callback, so meters continue while the receiver is hidden or occluded. The image upload loop caps requests near 30 Hz, skips identical images and follows actual platform background scheduling. A native Mac test observed 49 changed icon uploads during six seconds of hidden playback. The icon uses horizontal L/R rows on macOS and two vertical L/R bars in the square Windows notification icon. Both use the same independent pre-volume RMS and DSP peak-hold data as the receiver. The upper-chassis context menu also provides Settings, Minimize and Quit. Settings include autoplay, start minimized, device selection, VU decay, spectrum visibility and quality-badge threshold. Only one skin, VFD Digital — Black Aluminium, is implemented.
 
@@ -29,9 +29,22 @@ The source fascia is an original generated photographic asset with blank, unlit 
 
 All artists/titles, status, technical properties, VU bars, peak markers, FFT bars and control states are drawn live. No radio measurements or fake animated levels are baked into the image. Phosphor bloom, bright filament cores, dim inactive segments and an optical reflection layer simulate VFD glass. Long track text holds at the beginning for four seconds when metadata changes, then scrolls within its zone.
 
-The stereo scale is **−40 to +18 relative dB**, explicitly calibrated as **0 dB = −18 dBFS**. Digital full scale therefore corresponds to +18 on the relative scale. This display offset does not change audio gain. Lower-range segments have wider numeric gaps; the range around/above zero has 1 dB steps. Cyan is below zero, yellow starts at 0, amber at +4, red at +8. The spectrum is separately labeled in dBFS.
+The stereo scale remains **-40 to +18 dB**, with **Digital: 0 dBFS** as the default zero reference. No +18 dB display boost is added. Settings also offers **Studio: -18 dBFS**, explicitly labeled as a relative calibration. This never changes audio gain. Sample peaks use the same chosen reference and remain independently visible above the RMS body.
 
-VU RMS and peaks are measured from 256-frame blocks of pre-volume PCM consumed by the audio output. VU attack is immediate; the time-based fall is 120 dB/s (180 in Faster VU decay mode). Independent DSP peak holds retain even sub-frame transients for 1.5 seconds, followed by 12 dB/s decay. Bright gold caps and stems show each held peak, including +18. The FFT uses 4096 samples and 75% overlap (about 43 updates/s at 44.1 kHz), combining channel powers to preserve antiphase stereo. Spectrum attack is immediate with 90 dB/s decay. Active window repaints target 60 FPS; minimized/idle windows repaint less often. Frequency bands at/above Nyquist are unavailable; partial top bands are clipped.
+The RMS detector continuously integrates PCM energy with a 50 ms time constant, avoiding exaggerated 256-frame loudness jumps while retaining a quick response. At 50 ms, a steady step is within 2 dB of its settled level. Peak hold still observes each 256-frame block, retains transients for 1.5 seconds and then decays 12 dB/s. Measurements are taken before volume gain from the PCM actually consumed by the output callback.
+
+The spectrum uses a 4096-sample Hann FFT with 75% overlap: approximately 43 updates/s at 44.1 kHz and 47 at 48 kHz. One-sided Parseval normalization with the actual Hann-window energy gives stereo-average band RMS dBFS, correcting the previous 3 dB peak/RMS offset. Channel powers are combined without cancelling antiphase stereo. All ten labeled bands are tested with deterministic tones. Bars attack immediately and decay by elapsed time; Nyquist-unavailable bands stay dark. This is an analyzer, not an equalizer.
+
+## Update notifications
+
+Version 1.1.0 checks the public GitHub latest-release API off the GUI/audio threads. Successful results and ETags are cached. Automatic checks run after startup when the cached check is older than six hours, and every six hours while running. Settings can disable automatic checks or request a manual check; the tray menu offers the same manual action and shows an available version. HTTP deadlines, bounded response size, stable-version comparison, conditional requests and server rate-limit cooldowns are enforced.
+
+A newer published stable version opens a small update notice with download, release notes and later actions. When hidden, the notice appears when the receiver is restored, and the tray menu indicates the update. Download links are constructed only for this GitHub repository. Updating opens the user's browser; it does not silently execute or replace software. The user quits the app and replaces it from the new ZIP. Settings remain outside the app folder. No account identifier or listening metadata is sent to the release service; normal HTTPS requests expose the connection's IP and the application version in its User-Agent.
+
+**1.0.0 has no update checker and cannot receive an in-app update notice retroactively.** Its users need one announcement on the Radio Crash website/Facebook and one manual installation of 1.1.0. Future notices then work inside the app. Use the release's permanent latest-download aliases on the website, and upload those aliases with every future stable release.
+
+For isolated native QA, set `RC_CONFIG_DIR` to an absolute directory. All settings and update cache files then stay in that directory. `cargo run -- --check-update` probes the real release API without opening the GUI.
+
 
 ## Radio Crash integration
 

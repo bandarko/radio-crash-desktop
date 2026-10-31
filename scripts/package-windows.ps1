@@ -12,3 +12,4 @@ Copy-Item 'RELEASE-NOTES.md' "$Destination/RELEASE-NOTES.txt" -Force
 Copy-Item 'INSTALL-Windows.md' "$Destination/INSTALL.txt" -Force
 $Version = ((Select-String -Path 'Cargo.toml' -Pattern '^version = "([^"]+)"').Matches[0].Groups[1].Value)
 Compress-Archive -Path $Destination -DestinationPath "dist/Radio-Crash-Desktop-$Version-Windows-x64.zip" -Force
+Copy-Item "dist/Radio-Crash-Desktop-$Version-Windows-x64.zip" 'dist/Radio-Crash-Desktop-Windows-x64.zip' -Force

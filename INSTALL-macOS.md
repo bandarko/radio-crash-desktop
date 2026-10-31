@@ -1,8 +1,8 @@
 # Radio Crash Desktop — macOS
 
-Verzija 1.0.0 · Universal: Apple Silicon i Intel · macOS 11 ili noviji.
+Verzija 1.1.0 · Universal: Apple Silicon i Intel · macOS 11 ili noviji.
 
-Mac build 101 potpisan je Developer ID Application certifikatom i uspješno je prošao Appleovu notarizaciju. Notarizacijski ticket priložen je aplikaciji.
+Mac build 110 potpisan je Developer ID Application certifikatom i uspješno je prošao Appleovu notarizaciju. Notarizacijski ticket priložen je aplikaciji.
 
 1. Raspakirajte ZIP.
 2. Povucite **Radio Crash Desktop.app** u **Applications**.
@@ -15,3 +15,7 @@ Veličina prozora: povucite desni ili donji rub kućišta; za točne dimenzije o
 Release notes su u `RELEASE-NOTES.md`. Informacije o bibliotekama i njihovim izvornim kodovima nalaze se u `THIRD_PARTY_NOTICES.md`, `DEPENDENCIES.md` i `licenses/`.
 
 English: Unzip, drag the app to Applications, open it and press Power/Play. Right-click the upper chassis for window size, settings, minimize and quit. Click the menu-bar L/R meters to restore the receiver. Read the release notes for verification scope and supported stream formats.
+
+## Ažuriranja
+
+Za korisnike verzije 1.0.0 potrebna je jedna ručna instalacija 1.1.0. Od 1.1.0 player automatski provjerava nova stabilna izdanja. Provjera je dostupna i u Settings te tray izborniku. Za minimiziranje kliknite lijevom tipkom na lijevi gornji vijak kućišta.

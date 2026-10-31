@@ -32,5 +32,6 @@ cp -R licenses "$PAYLOAD/"
 cp RELEASE-NOTES.md "$PAYLOAD/RELEASE-NOTES.txt"
 cp INSTALL-macOS.md "$PAYLOAD/INSTALL.txt"
 ditto -c -k --keepParent "$PAYLOAD" "$ZIP"
+cp "$ZIP" "$RELEASE_DIR/Radio-Crash-Desktop-macOS-universal.zip"
 (cd "$RELEASE_DIR" && shasum -a 256 "Radio-Crash-Desktop-$VERSION-macOS-universal.zip" > SHA256SUMS-macOS.txt)
 echo "$ZIP"
