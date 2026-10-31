@@ -1,6 +1,6 @@
 # Radio Crash Desktop 1.1.1
 
-31. listopada 2026.
+1. studenoga 2026.
 
 - Novi zadani VU profil Radio Crash Hi-Fi: 0 VU = -15 dBFS. Signal od -11 dBFS prikazuje +4, a jači signal od -7 dBFS prikazuje +8. Vrijednosti i dalje prate stvarni zvuk.
 - Dodano fino podešavanje VU osjetljivosti. Glavni i tray instrumenti sada koriste potpuno istu odabranu kalibraciju.

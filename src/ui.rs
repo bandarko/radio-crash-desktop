@@ -382,7 +382,7 @@ impl RadioApp {
                         ui.selectable_value(&mut self.settings.vu_reference_dbfs,-18.,"Studio: -18 dBFS (relative VU)");
                     });
                     let mut sensitivity=-self.settings.vu_reference_dbfs;
-                    if ui.add(Slider::new(&mut sensitivity,0.0..=24.0).step_by(0.5).text("VU sensitivity · dB")).changed(){self.settings.vu_reference_dbfs=-sensitivity;}
+                    if ui.add(Slider::new(&mut sensitivity,0.0..=24.0).step_by(0.5).text("VU sensitivity · dB")).changed(){self.settings.vu_reference_dbfs = -sensitivity;}
                     ui.small("Meter display only; audio volume is unchanged. Main and tray meters use the same calibration.");
                     ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
                     ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD SOUND threshold · kbps"));
