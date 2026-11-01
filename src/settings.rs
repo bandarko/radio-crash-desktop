@@ -15,7 +15,6 @@ pub struct Settings {
     pub vu_response: crate::dsp::VuResponse,
     pub vu_reference_dbfs: f32,
     pub vu_calibration_version: u8,
-    pub auto_updates: bool,
     pub hd_kbps: u32,
     pub window_width: f32,
     pub window_height: f32,
@@ -36,7 +35,6 @@ impl Default for Settings {
             vu_response: crate::dsp::VuResponse::FastRms,
             vu_reference_dbfs: crate::dsp::VU_REFERENCE_DBFS,
             vu_calibration_version: 1,
-            auto_updates: true,
             hd_kbps: 192,
             window_width: 780.,
             window_height: 286.,
@@ -153,7 +151,8 @@ mod tests {
     fn response_profiles_persist_and_migrate_legacy_decay_choices() {
         use crate::dsp::VuResponse;
         assert_eq!(Settings::default().vu_response, VuResponse::FastRms);
-        let smooth = Settings::decode(br#"{"fast_vu":false,"volume":0.3}"#).unwrap();
+        let smooth =
+            Settings::decode(br#"{"fast_vu":false,"volume":0.3,"auto_updates":false}"#).unwrap();
         assert_eq!(smooth.vu_response, VuResponse::SmoothRms);
         for response in [VuResponse::SmoothRms, VuResponse::FastRms, VuResponse::Peak] {
             let selected = Settings {

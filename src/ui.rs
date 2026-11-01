@@ -15,7 +15,6 @@ pub struct RadioApp {
     updater: crate::updates::Checker,
     show_update: bool,
     update_seen: Option<crate::updates::Version>,
-    manual_update: bool,
     materials: Materials,
     observed_window: Vec2,
     resize_save: Option<Instant>,
@@ -76,7 +75,6 @@ impl RadioApp {
             updater: crate::updates::Checker::new(),
             show_update: false,
             update_seen: None,
-            manual_update: false,
             materials,
             observed_window: Vec2::ZERO,
             resize_save: None,
@@ -422,13 +420,13 @@ impl RadioApp {
                         ui.small("Measured from playback PCM before volume. No loudness normalization or audio processing. Silence has no finite LUFS value.");
                     });
                     ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
-                    ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD SOUND threshold · kbps"));
-                    ui.small("HD SOUND is a Radio Crash quality badge based on measured bitrate.\nMeters show the stream level before volume adjustment.");
+                    ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD badge lights from · kbps"));
+                    ui.small("Badge only. Audio always uses the original stream quality; this does not limit bitrate.\nHD SOUND is a Radio Crash badge, not a standardized HD codec. Meters are measured before volume.");
                     });
                     ui.separator();
-                    ui.checkbox(&mut self.settings.auto_updates,"Automatically check for updates");
+                    ui.label("Automatic update checks are always on");
                     ui.small("Checks on launch and every 6 hours. Updates are downloaded in your browser.");
-                    if ui.add_enabled(!self.updater.busy(),Button::new("Check for updates now")).clicked(){self.updater.request();self.manual_update=true;self.update_seen=None;}
+                    if ui.add_enabled(!self.updater.busy(),Button::new("Check for updates now")).clicked(){self.updater.request();self.update_seen=None;}
                     ui.label(match &self.updater.state {
                         crate::updates::State::Idle=>"Updates have not been checked yet".into(),
                         crate::updates::State::Checking=>"Checking for updates...".into(),
@@ -519,16 +517,12 @@ impl RadioApp {
 }
 impl eframe::App for RadioApp {
     fn logic(&mut self, ctx: &Context, _: &mut eframe::Frame) {
-        self.updater.tick(self.settings.auto_updates);
-        if (self.settings.auto_updates || self.manual_update)
-            && let crate::updates::State::Available(release) = &self.updater.state
+        self.updater.tick(true);
+        if let crate::updates::State::Available(release) = &self.updater.state
             && self.update_seen != Some(release.version)
         {
             self.update_seen = Some(release.version);
             self.show_update = true;
-        }
-        if !matches!(self.updater.state, crate::updates::State::Checking) {
-            self.manual_update = false;
         }
         let snapshot = self.engine.state.lock().unwrap().clone();
         let update_version = match &self.updater.state {
@@ -557,7 +551,6 @@ impl eframe::App for RadioApp {
                     self.show_update = true;
                 } else {
                     self.updater.request();
-                    self.manual_update = true;
                     self.show_settings = true;
                 }
             }

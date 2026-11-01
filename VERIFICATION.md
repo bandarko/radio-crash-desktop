@@ -8,6 +8,8 @@
 - True Peak/LUFS run on the existing consumed-PCM analysis worker. Only a bounded 3 s loudness history is enabled. No audio gain, normalization, compression, Hi-Fi RMS time constant, FFT normalization or stream integration change is made. Absolute dBTP is separated from the relative Hi-Fi scale in Settings.
 - Signing, notarization, ZIP roundtrip, installed version, update discovery and native CI results are recorded in the release manifest. Physical Windows playback and physical Intel Mac GUI/audio remain manually unverified. The Windows download is not Authenticode-signed.
 
+- The final update policy always passes enabled=true to the off-thread checker; the legacy auto_updates preference and opt-out checkbox are removed. Startup throttling, six-hour polling, ETags and cooldown tests remain in place. The HD badge threshold changes only illumination, never stream quality or gain.
+
 # Verification - 1.1.5 maximum-VU hold
 
 - Deterministic PCM tests preserve maximum RMS-envelope values within a block while keeping raw sample peaks separate. Chunked and whole-block processing yield the same maximum and final RMS.

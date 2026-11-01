@@ -8,9 +8,12 @@
 - Settings > Live signal measurements odvojeno prikazuje oversampled True Peak u dBTP te momentary (400 ms) i short-term (3 s) LUFS. Vrijednosti čekaju puni prozor mjerenja; tišina se prikazuje kao nedostupna.
 - Tray poštuje i Faster VU decay. Sačuvani su VU osjetljivost, glasnoća, FFT, HD Radio iluminator i izgled receivera. Nema normalizacije, kompresije ili umjetnog pojačavanja prikaza.
 
+- Automatska provjera novih verzija uvijek je uključena, pri pokretanju i svakih šest sati. Stara spremljena opcija za isključivanje više je ne može zaustaviti.
+- Prag HD oznake jasnije je označen: upravlja samo paljenjem oznake. Ne ograničava bitrate i ne smanjuje kvalitetu izvornog streama.
+
 ## English
 
-Three persistent VU response profiles now select genuine consumed-PCM detectors on both the receiver and tray: the original 50 ms Hi-Fi RMS, recommended 15 ms Fast RMS, and an instantaneous sample-peak envelope with controlled 20 dB / 320 ms release. Every profile holds the maximum of its own detector for two seconds, retaining the approved full zone-colored in-row filament. Selecting a profile does not restart playback or change gain. Separate advanced measurements show oversampled True Peak in dBTP and bounded momentary/short-term LUFS, with complete-window warm-up and silence handling. True Peak does not drive an RMS bar's front-panel hold. No normalization, compression, spectrum calibration or fascia change is made. This is not a certified meter or exact analogue hardware emulation.
+Three persistent VU response profiles now select genuine consumed-PCM detectors on both the receiver and tray: the original 50 ms Hi-Fi RMS, recommended 15 ms Fast RMS, and an instantaneous sample-peak envelope with controlled 20 dB / 320 ms release. Every profile holds the maximum of its own detector for two seconds, retaining the approved full zone-colored in-row filament. Selecting a profile does not restart playback or change gain. Separate advanced measurements show oversampled True Peak in dBTP and bounded momentary/short-term LUFS, with complete-window warm-up and silence handling. True Peak does not drive an RMS bar's front-panel hold. Automatic update checks are always on, including legacy configurations that disabled them. HD badge threshold wording now makes clear that it only controls illumination and never caps audio bitrate. No normalization, compression, spectrum calibration or fascia change is made. This is not a certified meter or exact analogue hardware emulation.
 
 Packaging and platform validation are recorded in the release manifest. Windows hardware playback remains manually unverified; Windows downloads are not Authenticode-signed.
 
