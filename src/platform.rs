@@ -220,12 +220,77 @@ fn configure_borderless_receiver(window: &winit::window::Window) {
 pub fn configure_receiver_window(cc: &eframe::CreationContext<'_>) {
     if let Some(window) = cc.winit_window() {
         configure_borderless_receiver(window);
+        if let Err(e) = maintain_receiver_frame(window) {
+            log::warn!("Receiver frame: {e}");
+        }
         log::info!(
             "Windows receiver: borderless, no native shadow inset, client {:?}, scale {}",
             window.inner_size(),
             window.scale_factor()
         );
     }
+}
+
+// Winit suppresses WM_NCCALCSIZE decorations while retaining WS_CAPTION and
+// WS_THICKFRAME. Some legacy WGL drivers still offset their drawable by those
+// native frame metrics. Remove the frame styles themselves, not mouse coordinates.
+// Reassert only when winit has changed styles (e.g. restore/focus). The application
+// already implements moving and resizing from the chassis client area.
+#[cfg(target_os = "windows")]
+fn receiver_hwnd(window: &winit::window::Window) -> Option<windows_sys::Win32::Foundation::HWND> {
+    use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    match window.window_handle().ok()?.as_raw() {
+        RawWindowHandle::Win32(handle) => Some(handle.hwnd.get() as *mut core::ffi::c_void),
+        _ => None,
+    }
+}
+#[cfg(target_os = "windows")]
+pub fn maintain_receiver_frame(window: &winit::window::Window) -> Result<(), String> {
+    use windows_sys::Win32::{
+        Foundation::{GetLastError, SetLastError},
+        UI::WindowsAndMessaging::*,
+    };
+    let hwnd = receiver_hwnd(window).ok_or("Native receiver handle unavailable")?;
+    // The handle is borrowed from our live, owned root window on its GUI thread.
+    unsafe {
+        if IsWindow(hwnd) == 0 {
+            return Ok(());
+        }
+        let old = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
+        let new = (old & !(WS_CAPTION | WS_THICKFRAME)) | WS_POPUP;
+        if new == old {
+            return Ok(());
+        }
+        SetLastError(0);
+        let previous = SetWindowLongPtrW(hwnd, GWL_STYLE, new as isize);
+        if previous == 0 && GetLastError() != 0 {
+            return Err(std::io::Error::last_os_error().to_string());
+        }
+        if SetWindowPos(
+            hwnd,
+            std::ptr::null_mut(),
+            0,
+            0,
+            0,
+            0,
+            SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER,
+        ) == 0
+        {
+            return Err(std::io::Error::last_os_error().to_string());
+        }
+    }
+    Ok(())
+}
+#[cfg(target_os = "windows")]
+pub fn receiver_window_report(window: &winit::window::Window) -> serde_json::Value {
+    use windows_sys::Win32::UI::WindowsAndMessaging::*;
+    let style =
+        receiver_hwnd(window).map(|hwnd| unsafe { GetWindowLongPtrW(hwnd, GWL_STYLE) as u32 });
+    let position = |p: Result<
+        winit::dpi::PhysicalPosition<i32>,
+        winit::error::NotSupportedError,
+    >| { p.ok().map(|p| [p.x, p.y]) };
+    serde_json::json!({"native_style":style.map(|s|format!("0x{s:08x}")),"caption_or_resize_frame":style.map(|s|s&(WS_CAPTION|WS_THICKFRAME)!=0),"popup":style.map(|s|s&WS_POPUP!=0),"client_origin_physical":position(window.inner_position()),"outer_origin_physical":position(window.outer_position()),"client_size_physical":[window.inner_size().width,window.inner_size().height],"outer_size_physical":[window.outer_size().width,window.outer_size().height],"native_scale_factor":window.scale_factor()})
 }
 
 #[cfg(all(test, target_os = "windows"))]
@@ -259,6 +324,20 @@ mod windows_window_tests {
                 )
                 .expect("hidden native Windows receiver");
             configure_borderless_receiver(&window);
+            maintain_receiver_frame(&window).unwrap();
+            let report = receiver_window_report(&window);
+            assert_eq!(report["caption_or_resize_frame"], false);
+            assert_eq!(report["popup"], true);
+            // Exercise a later native style update and reapply the production guard.
+            window.set_resizable(false);
+            window.set_resizable(true);
+            maintain_receiver_frame(&window).unwrap();
+            assert_eq!(
+                receiver_window_report(&window)["caption_or_resize_frame"],
+                false
+            );
+            let _ = window.request_inner_size(LogicalSize::new(size.0 + 40., size.1 + 15.));
+            assert!(window.inner_size().width > 0);
             assert!(!window.is_decorated());
             assert_eq!(
                 window.inner_position().unwrap(),

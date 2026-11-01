@@ -17,6 +17,8 @@ pub struct RadioApp {
     update_seen: Option<crate::updates::Version>,
     materials: Materials,
     graphics: crate::graphics::Graphics,
+    #[cfg(target_os = "windows")]
+    receiver_window: Option<std::sync::Arc<winit::window::Window>>,
     clock: crate::clock_face::ClockFace,
     clock_updated: Instant,
     observed_window: Vec2,
@@ -84,6 +86,8 @@ impl RadioApp {
             update_seen: None,
             materials,
             graphics,
+            #[cfg(target_os = "windows")]
+            receiver_window: cc.winit_window().cloned(),
             clock: crate::clock_face::ClockFace::now(),
             clock_updated: Instant::now(),
             observed_window: Vec2::ZERO,
@@ -398,6 +402,12 @@ impl RadioApp {
                     ui.separator();
                     ui.label("Skin: VFD Digital - Black Aluminium");
                     self.graphics.settings(ui, &mut self.settings.graphics_quality);
+                    if ui.button("Copy graphics and window diagnostics").clicked() {
+                        let report=self.graphics.diagnostics(self.settings.graphics_quality);
+                        #[cfg(target_os="windows")]
+                        let report={let mut report=report;if let Some(window)=&self.receiver_window {report["window"]=platform::receiver_window_report(window);}report};
+                        ui.ctx().copy_text(serde_json::to_string_pretty(&report).unwrap_or_default());
+                    }
                     ui.horizontal(|ui| {
                         let mut brightness=self.settings.vfd_brightness*100.;
                         if ui.add(Slider::new(&mut brightness,25.0..=100.0).text("VFD brightness · %")).changed() { self.settings.vfd_brightness=brightness/100.; }
@@ -531,6 +541,12 @@ impl RadioApp {
 }
 impl eframe::App for RadioApp {
     fn logic(&mut self, ctx: &Context, _: &mut eframe::Frame) {
+        #[cfg(target_os = "windows")]
+        if let Some(window) = &self.receiver_window
+            && let Err(e) = platform::maintain_receiver_frame(window)
+        {
+            log::warn!("Receiver frame: {e}");
+        }
         if self.clock_updated.elapsed() >= Duration::from_secs(1) {
             self.clock = crate::clock_face::ClockFace::now();
             self.clock_updated = Instant::now();

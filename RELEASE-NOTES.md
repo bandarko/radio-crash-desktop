@@ -1,3 +1,10 @@
+# 1.3.2 candidate (not a stable release)
+
+- Fix the overstrict OpenGL 4.1 eligibility requirement. The effects use desktop OpenGL 3.3; eframe requests that version even on an RTX 4070. The owner's actual 3.3.0 NVIDIA 596.49 context is now a regression fixture.
+- Candidate HP alignment correction: remove native caption/resize frame style bits, use a true popup receiver and reapply only after native style changes. This has not yet been verified on the physical HP or RTX machine.
+- Add a copyable graphics/window diagnostic report in Settings.
+- Existing Classic fallback, DSP/audio and Mac appearance are retained. Do not replace the current stable release before hardware confirmation.
+
 # Radio Crash Desktop 1.3.1
 
 - Windows: removed the OS title bar and rectangular frame from the main receiver. The component now floats on the desktop like the Mac version.

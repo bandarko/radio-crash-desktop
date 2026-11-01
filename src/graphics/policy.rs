@@ -55,7 +55,7 @@ impl Capabilities {
         .any(|v| name.contains(v));
         let gl_version = version.split_whitespace().next().unwrap_or("");
         let mut numbers = gl_version.split('.').filter_map(|v| v.parse::<u32>().ok());
-        let desktop_gl = (numbers.next().unwrap_or(0), numbers.next().unwrap_or(0)) >= (4, 1);
+        let desktop_gl = (numbers.next().unwrap_or(0), numbers.next().unwrap_or(0)) >= (3, 3);
         let supported = !software && desktop_gl && max_texture_size >= 8192 && texture_units >= 2;
         // Conservative automatic policy. Older/unknown devices retain 1.2.0;
         // supported but unclassified devices can be explicitly opted in.
@@ -172,6 +172,18 @@ mod tests {
         assert!(!caps("Apple", "Apple M2 Pro", "4.1 Metal").requested(Quality::Classic));
     }
     #[test]
+    fn eframe_default_33_context_does_not_reject_modern_windows_gpu() {
+        let c = caps(
+            "NVIDIA Corporation",
+            "NVIDIA GeForce RTX 4070/PCIe/SSE2",
+            "3.3.0 NVIDIA 596.49",
+        );
+        assert!(c.supported);
+        assert!(c.requested(Quality::Auto));
+        assert!(c.requested(Quality::Enhanced));
+        assert!(!caps("Intel", "Intel HD Graphics 4000", "3.3.0").requested(Quality::Auto));
+    }
+    #[test]
     fn software_low_limits_and_shader_versions_cannot_be_opted_in() {
         for name in [
             "llvmpipe",
@@ -181,7 +193,7 @@ mod tests {
         ] {
             assert!(!caps("test", name, "4.6").requested(Quality::Enhanced));
         }
-        assert!(!caps("NVIDIA", "GeForce RTX 4070", "3.3").supported);
+        assert!(!caps("NVIDIA", "GeForce RTX 4070", "3.2").supported);
         assert!(!caps("NVIDIA", "GeForce RTX 4070", "OpenGL ES 3.2").supported);
         assert!(
             !Capabilities::classify("Apple".into(), "Apple M2".into(), "4.1".into(), 4096, 16)

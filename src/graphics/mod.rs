@@ -210,6 +210,10 @@ impl Graphics {
             })),
         });
     }
+    pub fn diagnostics(&self, quality: Quality) -> serde_json::Value {
+        let state = self.state.lock().unwrap();
+        serde_json::json!({"version":env!("CARGO_PKG_VERSION"),"backend":"OpenGL (eframe/glow)","minimum_desktop_opengl":"3.3","capabilities":state.caps,"selection":quality,"active":state.active,"fallback":state.blocked,"timer_functions_loaded":state.timer_api.is_some(),"gpu_ms":state.renderer.as_ref().and_then(|r|r.gpu_ms)})
+    }
     pub fn settings(&mut self, ui: &mut egui::Ui, quality: &mut Quality) {
         let mut state = self.state.lock().unwrap();
         egui::ComboBox::from_label("Receiver graphics")
@@ -228,7 +232,7 @@ impl Graphics {
         });
         egui::CollapsingHeader::new("Graphics details").show(ui,|ui|{
             ui.label(format!("{} · {}",state.caps.vendor,state.caps.renderer));
-            ui.small(&state.caps.version);
+            ui.small(format!("OpenGL context: {} (required: desktop 3.3+)",state.caps.version));
             if let Some(reason)=&state.blocked{ui.label(reason);}else{ui.small(&state.caps.reason);}
             if let Some(ms)=state.renderer.as_ref().and_then(|r|r.gpu_ms){ui.small(format!("GPU optics: {ms:.2} ms per frame (asynchronous shader measurement)"));}
             ui.small("Standard dynamic range output. No HDR display mode is requested. Older or unsupported graphics keep the original appearance automatically.");
