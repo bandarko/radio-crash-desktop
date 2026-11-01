@@ -1,3 +1,11 @@
+# Verification - 1.3.1 Windows receiver frame
+
+- The root viewport explicitly requests no decorations and retains transparency. The separate Settings viewport retains native decorations. macOS already used a borderless root; its rendering and audio implementation are unchanged.
+- On Windows, `CreationContext::winit_window` configures the existing native window through winit's safe `WindowExtWindows::set_undecorated_shadow(false)` API. This removes egui-winit's automatic shadow flag; winit's WM_NCCALCSIZE branch otherwise shifts the client origin by one physical pixel.
+- A Windows-only test creates actual hidden, transparent, resizable native windows at compact/large sizes, reproduces egui-winit's initial shadow configuration, applies the production helper and compares client/outer origins and sizes. It requires no graphics or audio device. Existing pointer tests still cover all control corners, DPI scales and letterboxed geometry.
+- Host tests and strict Clippy remain required, plus all three native CI jobs. There are 52 shared tests and one additional Windows-only geometry test. Native Windows GPU rendering/pointer behavior on the owner's HP/RTX remains separately unverified until that manual check.
+- Version 1.3.1 is supplied for both platforms to let existing version-based update checks discover the fix. macOS has no new visual/audio behavior; its package still requires signing, notarization and ZIP-roundtrip Gatekeeper validation.
+
 # Verification - 1.3.0 adaptive GPU optics
 
 - 52 deterministic tests pass, including conservative GPU eligibility, rejected software/virtual/low-limit devices, bounded allocation arithmetic, sustained timing budget, recovery-record scoping (incomplete enhanced sessions retain Classic on next launch) and graphics preference migration. Existing audio/DSP/update/input tests remain passing.

@@ -21,7 +21,7 @@ These are SDR optics. Internal floating-point textures are not an HDR swapchain.
 - Four asynchronous timer queries measure shader work without blocking on results. Sustained combined glass/material cost above 7.5 ms triggers Classic after warm-up. Stalled timing also triggers fallback. No timer read is allowed to block the audio callback.
 - A local GPU-fingerprinted `graphics-state.json` marks an enhanced session in progress. Clean shutdown or a deliberate return to Classic clears the marker. A subsequent launch with an incomplete marker or recorded graphics failure retains Classic until the user selects Retry in Graphics details. The record is local and contains no telemetry destination.
 - Shader/texture/framebuffer errors disable further enhanced passes. The next frame uses the original renderer. GL resources are released with a valid context during exit; no GL calls happen from a destructor after context teardown.
-- The native Windows title bar, DPI manifest and logical-point input transform are unchanged.
+- The main receiver is borderless on Windows and macOS. Windows disables the extra undecorated DWM shadow (and its native one-pixel client inset). The DPI manifest, logical-point input transform, existing chassis drag/resize handles and audio path are retained; Settings remains a separate decorated native window.
 
 The core OpenGL query read addresses are explicitly checked and loaded from eframe's current context. This avoids glow 0.17's incorrect GL 4.4 query-buffer capability test for GL 3.3 timer reads on macOS OpenGL 4.1. Only the documented core timer ABI is used; no third-party native library is bundled.
 

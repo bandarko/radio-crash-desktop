@@ -1,3 +1,12 @@
+# Radio Crash Desktop 1.3.1
+
+- Windows: removed the OS title bar and rectangular frame from the main receiver. The component now floats on the desktop like the Mac version.
+- Windows: disabled the extra undecorated DWM shadow and its one-physical-pixel client inset. Existing DPI handling and shared pointer geometry are retained, without a guessed mouse offset.
+- Move the receiver by its upper aluminium chassis, resize with its rim/corner, minimize with the upper-left screw or chassis menu, and exit with POWER > EXIT or Alt+F4. Settings keeps its compact native window.
+- A native Windows hidden-window test checks that client and outer origins/sizes coincide after configuration. This does not replace testing on the physical HP or NVIDIA GPU.
+- macOS: version/build update only, with the same receiver appearance and behavior. Both platforms use 1.3.1 so existing automatic update checks can discover the release correctly.
+- GPU quality selection, audio, meters, spectrum, night display, clock, logo and approved HD Radio illuminator are unchanged.
+
 # Radio Crash Desktop 1.3.0
 
 - Adaptive GPU optics add glass scattering, actual VFD phosphor bloom and subtle brushed-metal and rotary-knob highlights on supported modern graphics.

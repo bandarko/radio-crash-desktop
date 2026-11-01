@@ -46,6 +46,8 @@ pub struct RadioApp {
 }
 impl RadioApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        #[cfg(target_os = "windows")]
+        crate::platform::configure_receiver_window(cc);
         let mut fonts = FontDefinitions::default();
         fonts.font_data.insert(
             "vfd".into(),

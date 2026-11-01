@@ -206,3 +206,70 @@ pub fn is_tray_mode() -> bool {
         true
     }
 }
+
+// egui-winit enables an undecorated DWM shadow automatically. winit implements
+// that shadow with a one-physical-pixel non-client top inset. Our photographed
+// chassis already has its own perimeter, so retain a fully client-area window.
+#[cfg(target_os = "windows")]
+fn configure_borderless_receiver(window: &winit::window::Window) {
+    use winit::platform::windows::WindowExtWindows;
+    window.set_undecorated_shadow(false);
+}
+
+#[cfg(target_os = "windows")]
+pub fn configure_receiver_window(cc: &eframe::CreationContext<'_>) {
+    if let Some(window) = cc.winit_window() {
+        configure_borderless_receiver(window);
+        log::info!(
+            "Windows receiver: borderless, no native shadow inset, client {:?}, scale {}",
+            window.inner_size(),
+            window.scale_factor()
+        );
+    }
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod windows_window_tests {
+    use super::*;
+    use winit::{
+        dpi::LogicalSize,
+        event_loop::EventLoop,
+        platform::windows::{EventLoopBuilderExtWindows, WindowAttributesExtWindows},
+        window::Window,
+    };
+
+    #[test]
+    #[allow(deprecated)] // Hidden windows need no render/event loop in this Win32 geometry test.
+    fn borderless_receiver_client_origin_matches_outer_origin() {
+        let event_loop = EventLoop::builder()
+            .with_any_thread(true)
+            .build()
+            .expect("Windows event loop");
+        for size in [(780., 286.), (1200., 440.)] {
+            let window = event_loop
+                .create_window(
+                    Window::default_attributes()
+                        .with_visible(false)
+                        .with_decorations(false)
+                        .with_transparent(true)
+                        .with_resizable(true)
+                        .with_inner_size(LogicalSize::new(size.0, size.1))
+                        // Reproduce egui-winit's automatic starting shadow before our fix.
+                        .with_undecorated_shadow(true),
+                )
+                .expect("hidden native Windows receiver");
+            configure_borderless_receiver(&window);
+            assert!(!window.is_decorated());
+            assert_eq!(
+                window.inner_position().unwrap(),
+                window.outer_position().unwrap(),
+                "client and pointer origin must not include a hidden shadow inset"
+            );
+            assert_eq!(
+                window.inner_size(),
+                window.outer_size(),
+                "no native frame around the client area"
+            );
+        }
+    }
+}

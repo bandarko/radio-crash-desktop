@@ -84,9 +84,9 @@ fn main() -> anyhow::Result<()> {
             } else {
                 "Radio Crash Desktop"
             })
-            // Native Windows chrome avoids the legacy Intel/Win10 borderless
-            // OpenGL drawable/client offset and provides standard X / Alt+F4.
-            .with_decorations(cfg!(target_os = "windows"))
+            // The receiver itself is the window frame on both desktop platforms.
+            // Windows' extra undecorated shadow/inset is disabled at creation.
+            .with_decorations(false)
             .with_transparent(true)
             .with_icon(
                 eframe::icon_data::from_png_bytes(include_bytes!("../assets/RadioCrash.png"))
