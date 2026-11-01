@@ -21,3 +21,5 @@ The resolved dependency inventory is in `DEPENDENCIES.md`; available upstream li
 Source code for this application and the exact dependency lockfile are available at https://github.com/bandarko/radio-crash-desktop . Symphonia and its codec crates are used unmodified under MPL-2.0; their corresponding source locations and versions are listed in `DEPENDENCIES.md` and are retrievable from crates.io using `Cargo.lock`. The MPL-2.0 license is included in `licenses/`.
 
 The True Peak / LUFS analyzer uses `ebur128` (MIT) and `dasp_frame` (MIT OR Apache-2.0), implemented in Rust and linked into the app. Their original license notices are included under `licenses/`. No external platform-specific analyzer executable is distributed.
+
+The local standby clock uses chrono and iana-time-zone with their upstream MIT / Apache-2.0 notices in `licenses/`. It uses platform time and does not bundle an external clock service or executable.

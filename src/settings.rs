@@ -19,6 +19,8 @@ pub struct Settings {
     pub start_minimized: bool,
     pub minimize_to_tray: bool,
     pub spectrum: bool,
+    pub vfd_brightness: f32,
+    pub standby_clock: bool,
     pub fast_vu: bool,
     pub vu_response: crate::dsp::VuResponse,
     pub vu_reference_dbfs: f32,
@@ -39,6 +41,8 @@ impl Default for Settings {
             start_minimized: false,
             minimize_to_tray: false,
             spectrum: true,
+            vfd_brightness: 1.,
+            standby_clock: true,
             fast_vu: true,
             vu_response: crate::dsp::VuResponse::FastRms,
             vu_reference_dbfs: crate::dsp::VU_REFERENCE_DBFS,
@@ -71,6 +75,7 @@ impl Settings {
             .and_then(|b| Self::decode(&b))
             .unwrap_or_default();
         s.volume = s.volume.clamp(0., 1.);
+        s.vfd_brightness = display_brightness(s.vfd_brightness);
         s.vu_reference_dbfs = if s.vu_reference_dbfs.is_finite() {
             s.vu_reference_dbfs.clamp(-24., 0.)
         } else {
@@ -112,6 +117,14 @@ impl Settings {
         }
         std::fs::rename(tmp, p)?;
         Ok(())
+    }
+}
+
+pub fn display_brightness(value: f32) -> f32 {
+    if value.is_finite() {
+        value.clamp(0.25, 1.)
+    } else {
+        1.
     }
 }
 

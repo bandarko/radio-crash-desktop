@@ -6,6 +6,12 @@ Version **1.2.0**. See [release notes](RELEASE-NOTES.md), [Mac installation](INS
 
 ![Radio Crash Desktop native receiver](docs/receiver.png)
 
+## VFD day/night brightness and standby clock
+
+Settings offers a 25-100% VFD brightness slider and **Day** (100%) / **Night** (45%) presets. Dimming affects only the emitted display plane. The photographed aluminium, physical buttons, original white logo and approved HD Radio illuminator stay unchanged. Brightness never affects audio gain or meter calibration, and the selected level is saved.
+
+**Show local clock when stopped** is on by default. When playback is deliberately stopped, the centre VFD shows a large 24-hour dot-matrix clock and local date. PLAY immediately returns it to Now Playing. Connecting, buffering and reconnecting continue to show their real status and never become a clock. Time comes from the computer's local timezone, refreshed once per second without a network time service. The clock can be disabled in Settings.
+
 ## Everyday use and window size
 
 The default is **780 × 286 logical desktop points**, substantially smaller than the original 1200 × 440 layout. The last window size is saved automatically and restored at launch.

@@ -16,6 +16,8 @@ pub struct RadioApp {
     show_update: bool,
     update_seen: Option<crate::updates::Version>,
     materials: Materials,
+    clock: crate::clock_face::ClockFace,
+    clock_updated: Instant,
     observed_window: Vec2,
     resize_save: Option<Instant>,
     applied_connection: (String, String, String),
@@ -76,6 +78,8 @@ impl RadioApp {
             show_update: false,
             update_seen: None,
             materials,
+            clock: crate::clock_face::ClockFace::now(),
+            clock_updated: Instant::now(),
             observed_window: Vec2::ZERO,
             resize_save: None,
             applied_connection: (
@@ -381,6 +385,13 @@ impl RadioApp {
                     ui.small("Drag the right/bottom edge or lower-right corner to resize. Size is remembered.");
                     ui.separator();
                     ui.label("Skin: VFD Digital - Black Aluminium");
+                    ui.horizontal(|ui| {
+                        let mut brightness=self.settings.vfd_brightness*100.;
+                        if ui.add(Slider::new(&mut brightness,25.0..=100.0).text("VFD brightness · %")).changed() { self.settings.vfd_brightness=brightness/100.; }
+                        if ui.button("Day").clicked() { self.settings.vfd_brightness=1.; }
+                        if ui.button("Night").clicked() { self.settings.vfd_brightness=0.45; }
+                    });
+                    ui.checkbox(&mut self.settings.standby_clock,"Show local clock when stopped");
                     ComboBox::from_label("VU response").selected_text(self.settings.vu_response.label()).show_ui(ui, |ui| {
                         for response in [crate::dsp::VuResponse::SmoothRms, crate::dsp::VuResponse::FastRms, crate::dsp::VuResponse::Peak] {
                             ui.selectable_value(&mut self.settings.vu_response, response, response.label());
@@ -507,6 +518,10 @@ impl RadioApp {
 }
 impl eframe::App for RadioApp {
     fn logic(&mut self, ctx: &Context, _: &mut eframe::Frame) {
+        if self.clock_updated.elapsed() >= Duration::from_secs(1) {
+            self.clock = crate::clock_face::ClockFace::now();
+            self.clock_updated = Instant::now();
+        }
         self.updater.tick(true);
         if let crate::updates::State::Available(release) = &self.updater.state
             && self.update_seen != Some(release.version)
@@ -701,13 +716,22 @@ impl eframe::App for RadioApp {
             Rect::from_min_size(pt(x, y), vec2(w * 1060. / 1104., h * 136. / 175.) * scale)
         };
         let scale = scale * 0.9;
+        let standby_clock = self.settings.standby_clock && !self.engine.running();
+        let mut p = p.clone();
+        p.multiply_opacity(crate::settings::display_brightness(
+            self.settings.vfd_brightness,
+        ));
         for x in [443., 820.] {
             p.line_segment(
                 [pt(x, 129.), pt(x, 269.)],
                 Stroke::new(0.6 * scale, Color32::from_rgb(31, 62, 63)),
             );
         }
-        let muted_display = if self.power { CYAN } else { DIM };
+        let muted_display = if self.power || standby_clock {
+            CYAN
+        } else {
+            DIM
+        };
         text(
             &p,
             pt(70., 129.),
@@ -798,7 +822,9 @@ impl eframe::App for RadioApp {
             format!("0 VU = {} dBFS", self.settings.vu_reference_dbfs)
         };
         text(&p, pt(245., 257.), &calibration, 7.8 * scale, DIM);
-        let status = if !self.power {
+        let status = if standby_clock {
+            "STANDBY"
+        } else if !self.power {
             "POWER OFF"
         } else {
             &snap.status
@@ -806,7 +832,11 @@ impl eframe::App for RadioApp {
         text(
             &p,
             pt(466., 129.),
-            "NOW PLAYING",
+            if standby_clock {
+                "LOCAL TIME"
+            } else {
+                "NOW PLAYING"
+            },
             9.5 * scale,
             muted_display.gamma_multiply(0.7),
         );
@@ -840,8 +870,36 @@ impl eframe::App for RadioApp {
         } else {
             &snap.title
         };
-        self.marquee(&p, rect(466., 158., 331., 34.), artist, 26. * scale);
-        self.marquee(&p, rect(466., 201., 331., 28.), title, 20.5 * scale);
+        if standby_clock {
+            let font = FontId::new(43. * scale, FontFamily::Name("vfd".into()));
+            let center = pt(631., 158.);
+            for offset in [vec2(-0.7, 0.), vec2(0.7, 0.), vec2(0., -0.7), vec2(0., 0.7)] {
+                p.text(
+                    center + offset * scale,
+                    Align2::CENTER_TOP,
+                    &self.clock.time,
+                    font.clone(),
+                    Color32::from_rgba_unmultiplied(65, 232, 245, 25),
+                );
+            }
+            p.text(
+                center,
+                Align2::CENTER_TOP,
+                &self.clock.time,
+                font,
+                muted_display,
+            );
+            p.text(
+                pt(631., 218.),
+                Align2::CENTER_TOP,
+                &self.clock.date,
+                FontId::monospace(11. * scale),
+                CYAN.gamma_multiply(0.75),
+            );
+        } else {
+            self.marquee(&p, rect(466., 158., 331., 34.), artist, 26. * scale);
+            self.marquee(&p, rect(466., 201., 331., 28.), title, 20.5 * scale);
+        }
         p.line_segment(
             [pt(465., 242.), pt(799., 242.)],
             Stroke::new(0.6 * scale, DIM),
@@ -850,24 +908,34 @@ impl eframe::App for RadioApp {
             "{}   {}   {}   {}",
             snap.bitrate
                 .map(|v| format!("{v} kbps"))
-                .unwrap_or("— kbps".into()),
+                .unwrap_or("- kbps".into()),
             if snap.codec.is_empty() {
-                "—"
+                "-"
             } else {
                 &snap.codec
             },
             if snap.rate > 0 {
                 format!("{:.1} kHz", snap.rate as f32 / 1000.)
             } else {
-                "— kHz".into()
+                "- kHz".into()
             },
             match snap.channels {
                 1 => "MONO",
                 2 => "STEREO",
-                _ => "—",
+                _ => "-",
             }
         );
-        text(&p, pt(467., 255.), &tech, 10. * scale, muted_display);
+        text(
+            &p,
+            pt(467., 255.),
+            if standby_clock {
+                "RADIO CRASH  ·  SINCE 1986"
+            } else {
+                &tech
+            },
+            10. * scale,
+            muted_display,
+        );
         text(
             &p,
             pt(842., 129.),
@@ -947,6 +1015,7 @@ impl eframe::App for RadioApp {
             },
         );
         // The photographed hardware surfaces are native interactive controls, never baked indicators.
+        let p = ui.painter().clone();
         let scale = (area.width() / 1200.).min(area.height() / 440.);
         let pt = |x: f32, y: f32| base + vec2(x, y) * scale;
         let rect =

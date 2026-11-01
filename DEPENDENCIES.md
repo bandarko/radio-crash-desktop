@@ -12,6 +12,7 @@ Generated from pinned Cargo.lock and cargo metadata. Includes target-specific an
 | alsa-sys | 0.4.0 | MIT | [upstream](https://github.com/diwic/alsa-sys) |
 | android-activity | 0.6.1 | MIT OR Apache-2.0 | [upstream](https://github.com/rust-mobile/android-activity) |
 | android-properties | 0.2.2 | MIT | [upstream](https://github.com/miklelappo/android-properties) |
+| android_system_properties | 0.1.6 | MIT OR Apache-2.0 | [upstream](https://github.com/nical/android_system_properties) |
 | anstream | 1.0.0 | MIT OR Apache-2.0 | [upstream](https://github.com/rust-cli/anstyle.git) |
 | anstyle | 1.0.14 | MIT OR Apache-2.0 | [upstream](https://github.com/rust-cli/anstyle.git) |
 | anstyle-parse | 1.0.0 | MIT OR Apache-2.0 | [upstream](https://github.com/rust-cli/anstyle.git) |
@@ -48,6 +49,7 @@ Generated from pinned Cargo.lock and cargo metadata. Includes target-specific an
 | cfg_aliases | 0.2.2 | MIT | [upstream](https://github.com/katharostech/cfg_aliases) |
 | cgl | 0.3.2 | MIT / Apache-2.0 | [upstream](https://github.com/servo/cgl-rs) |
 | chacha20 | 0.10.2 | MIT OR Apache-2.0 | [upstream](https://github.com/RustCrypto/stream-ciphers) |
+| chrono | 0.4.45 | MIT OR Apache-2.0 | [upstream](https://github.com/chronotope/chrono) |
 | clipboard-win | 5.4.3 | BSL-1.0 | [upstream](https://github.com/DoumanAsh/clipboard-win) |
 | codespan-reporting | 0.13.1 | Apache-2.0 | [upstream](https://github.com/brendanzab/codespan) |
 | color | 0.3.3 | Apache-2.0 OR MIT | [upstream](https://github.com/linebender/color) |
@@ -162,6 +164,8 @@ Generated from pinned Cargo.lock and cargo metadata. Includes target-specific an
 | hyper | 1.12.0 | MIT | [upstream](https://github.com/hyperium/hyper) |
 | hyper-rustls | 0.27.10 | Apache-2.0 OR ISC OR MIT | [upstream](https://github.com/rustls/hyper-rustls) |
 | hyper-util | 0.1.21 | MIT | [upstream](https://github.com/hyperium/hyper-util) |
+| iana-time-zone | 0.1.65 | MIT OR Apache-2.0 | [upstream](https://github.com/strawlab/iana-time-zone) |
+| iana-time-zone-haiku | 0.1.2 | MIT OR Apache-2.0 | [upstream](https://github.com/strawlab/iana-time-zone) |
 | icu_collections | 2.4.0 | Unicode-3.0 | [upstream](https://github.com/unicode-org/icu4x) |
 | icu_locale_core | 2.4.0 | Unicode-3.0 | [upstream](https://github.com/unicode-org/icu4x) |
 | icu_normalizer | 2.4.0 | Unicode-3.0 | [upstream](https://github.com/unicode-org/icu4x) |

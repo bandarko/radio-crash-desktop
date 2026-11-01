@@ -1,6 +1,7 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 mod audio;
 mod audio_resample;
+mod clock_face;
 mod dsp;
 mod metadata;
 mod panel;
