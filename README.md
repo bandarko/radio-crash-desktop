@@ -2,7 +2,7 @@
 
 Native Rust internet radio receiver for macOS and Windows, with a photographic black brushed-aluminium fascia and live cyan VFD instruments. eframe/egui paints all live display content and interactive control states. CPAL drives CoreAudio/WASAPI; Symphonia decodes AAC-LC and MP3. No webview, browser engine or external decoder executable is bundled.
 
-Version **1.1.2**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
+Version **1.1.3**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
 
 ![Radio Crash Desktop native receiver](docs/receiver.png)
 
@@ -43,7 +43,7 @@ The spectrum uses a 4096-sample Hann FFT with 75% overlap: approximately 43 upda
 
 ## Update notifications
 
-Version 1.1.0 checks the public GitHub latest-release API off the GUI/audio threads. Successful results and ETags are cached. Automatic checks run after startup when the cached check is older than six hours, and every six hours while running. Settings can disable automatic checks or request a manual check; the tray menu offers the same manual action and shows an available version. HTTP deadlines, bounded response size, stable-version comparison, conditional requests and server rate-limit cooldowns are enforced.
+Version 1.1.0 checks the public GitHub latest-release API off the GUI/audio threads. Successful results and ETags are cached. Every launch schedules a conditional check after five seconds, regardless of a cached result being less than six hours old. Relaunches within one minute of a successful check wait out that one-minute throttle. While running continuously, automatic checks repeat every six hours. Settings shows the running version at the top and keeps update controls visible outside the scrollable configuration area. Settings can disable automatic checks or request a manual check; the tray menu offers the same manual action and shows an available version. HTTP deadlines, bounded response size, stable-version comparison, conditional requests and server rate-limit cooldowns are enforced.
 
 A newer published stable version opens a small update notice with download, release notes and later actions. When hidden, the notice appears when the receiver is restored, and the tray menu indicates the update. Download links are constructed only for this GitHub repository. Updating opens the user's browser; it does not silently execute or replace software. The user quits the app and replaces it from the new ZIP. Settings remain outside the app folder. No account identifier or listening metadata is sent to the release service; normal HTTPS requests expose the connection's IP and the application version in its User-Agent.
 

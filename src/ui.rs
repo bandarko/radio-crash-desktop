@@ -350,9 +350,10 @@ impl RadioApp {
             |ctx, _| {
                 closed = ctx.input(|i| i.viewport().close_requested());
                 CentralPanel::default().show(ctx, |ui| {
-                    ScrollArea::vertical().id_salt("receiver-settings-scroll").max_height((ui.available_height()-65.).max(180.)).show(ui,|ui|{
                     ui.heading("Receiver settings");
-                    ui.add_space(8.);
+                    ui.label(concat!("Radio Crash Desktop ",env!("CARGO_PKG_VERSION")));
+                    ui.separator();
+                    ScrollArea::vertical().id_salt("receiver-settings-scroll").max_height((ui.available_height()-164.).max(80.)).show(ui,|ui|{
                     ui.label("Stream URL");
                     ui.add(TextEdit::singleline(&mut self.settings.stream_url).desired_width(f32::INFINITY));
                     ui.label("Now Playing JSON endpoint · empty disables polling");
@@ -396,10 +397,10 @@ impl RadioApp {
                     ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
                     ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD SOUND threshold · kbps"));
                     ui.small("HD SOUND is a Radio Crash quality badge based on measured bitrate.\nMeters show the stream level before volume adjustment.");
+                    });
                     ui.separator();
-                    ui.label(concat!("Radio Crash Desktop ",env!("CARGO_PKG_VERSION")));
                     ui.checkbox(&mut self.settings.auto_updates,"Automatically check for updates");
-                    ui.small("Checks GitHub at launch or every 6 hours. No account or listening data is sent.");
+                    ui.small("Checks on launch and every 6 hours. Updates are downloaded in your browser.");
                     if ui.add_enabled(!self.updater.busy(),Button::new("Check for updates now")).clicked(){self.updater.request();self.manual_update=true;self.update_seen=None;}
                     ui.label(match &self.updater.state {
                         crate::updates::State::Idle=>"Updates have not been checked yet".into(),
@@ -407,7 +408,6 @@ impl RadioApp {
                         crate::updates::State::Current=>"You have the latest version".into(),
                         crate::updates::State::Available(r)=>format!("New version available: {}",r.version.text()),
                         crate::updates::State::Failed(message)=>message.clone(),
-                    });
                     });
                     ui.add_space(8.);
                     apply=ui.button("Save and apply").clicked();

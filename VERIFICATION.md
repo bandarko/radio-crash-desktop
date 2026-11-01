@@ -1,3 +1,11 @@
+# Verification - 1.1.3 update discovery
+
+- A deterministic regression test proves that a two-hour-old successful check schedules a five-second startup check, rather than a four-hour wait. It also covers a just-finished check, rapid relaunches, missing cache and a future timestamp/clock correction.
+- Existing local HTTP tests continue to verify ETag/304 handling, stable versions and repository-scoped URLs. No notification is synthesized for the real installation.
+- Settings version is above the scroll area; update controls and Save are below it with reserved space, including at the 420-point minimum height.
+- Regression scenario: publishing a newer release shortly after a successful current-version check must not suppress networking on the next launch for up to six hours. Older preview binaries without update support still require one manual upgrade.
+- Native captures, notarization, package hashes and all three CI targets are verified separately in the release manifest. Physical Windows interaction remains outside local verification.
+
 # Verification - 1.1.2 window controls
 
 - Egui interaction tests exercise all button centers and four inset corners at 560/780/1200 widths and letterboxed wide/tall custom sizes, with 100/125/150/200% native pixels per point. The same context also changes DPI and client size between clicks.

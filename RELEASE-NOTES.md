@@ -1,3 +1,21 @@
+# Radio Crash Desktop 1.1.3
+
+1. studenoga 2026.
+
+- Ispravljena provjera ažuriranja pri pokretanju: nova provjera obavlja se nakon pet sekundi i kad postoji rezultat spremljen prije manje od šest sati. Brza ponovna pokretanja poštuju razmak od jedne minute između provjera. Tijekom neprekidnog rada provjera ostaje svakih šest sati.
+- Broj pokrenute verzije stalno je vidljiv na vrhu Settings prozora.
+- Automatska provjera, gumb **Check for updates now** i rezultat provjere sada su stalno vidljivi ispod postavki. Više nisu skriveni u području koje se skrola.
+- Ažuriranja se i dalje preuzimaju u pregledniku. Aplikacija se ne zamjenjuje sama.
+- POWER izbornik OFF/ON/EXIT, Windows naslovna traka, VU kalibracija, audio i izgled receivera ostaju kao u 1.1.2.
+
+Mac paket je Developer ID potpisan i notariziran. Windows EXE nije Authenticode potpisan; rad na fizičkom Windows računalu nije ručno provjeren u ovoj provjeri.
+
+## English
+
+Startup checks no longer wait for the previous six-hour cache period to expire. Each launch schedules an ETag check after five seconds, with a one-minute throttle for rapid relaunches; continuous sessions still check every six hours. The running version is fixed at the top of Settings, and update controls/status remain visible outside its scrollable area. Updates open the browser and do not silently install. POWER actions, Windows frame, PCM/audio, VU calibration and the receiver artwork are unchanged.
+
+---
+
 # Radio Crash Desktop 1.1.2
 
 1. studenoga 2026.

@@ -11,6 +11,18 @@ use std::{
 pub const RELEASES: &str = "https://github.com/bandarko/radio-crash-desktop/releases";
 const API: &str = "https://api.github.com/repos/bandarko/radio-crash-desktop/releases/latest";
 const INTERVAL: u64 = 6 * 60 * 60;
+const MIN_CHECK_INTERVAL: u64 = 60;
+
+// Recheck each launch even if an older successful result is cached. ETags
+// still avoid redundant payloads; rapid relaunches share a one-minute throttle.
+fn startup_delay(checked_at: u64, now: u64) -> Duration {
+    let age = if checked_at <= now {
+        now - checked_at
+    } else {
+        MIN_CHECK_INTERVAL
+    };
+    Duration::from_secs(MIN_CHECK_INTERVAL.saturating_sub(age).max(5))
+}
 #[derive(Debug)]
 struct RateLimited(u64);
 impl std::fmt::Display for RateLimited {
@@ -199,12 +211,7 @@ impl Checker {
         }) {
             cache = Cache::default();
         }
-        let age = unix_time().saturating_sub(cache.checked_at);
-        let wait = if cache.checked_at <= unix_time() {
-            INTERVAL.saturating_sub(age)
-        } else {
-            0
-        };
+        let wait = startup_delay(cache.checked_at, unix_time());
         let current = Version::parse(env!("CARGO_PKG_VERSION")).expect("semantic package version");
         let state = match &cache.release {
             Some(r) if r.version > current => State::Available(r.clone()),
@@ -219,7 +226,7 @@ impl Checker {
             receiver,
             sender,
             worker: None,
-            next_check: Instant::now() + Duration::from_secs(wait.max(5)),
+            next_check: Instant::now() + wait,
             last_attempt: None,
             blocked_until: None,
             revision: 0,
@@ -235,7 +242,7 @@ impl Checker {
         if self.busy()
             || self
                 .last_attempt
-                .is_some_and(|t| t.elapsed() < Duration::from_secs(60))
+                .is_some_and(|t| t.elapsed() < Duration::from_secs(MIN_CHECK_INTERVAL))
         {
             return;
         }
@@ -312,6 +319,17 @@ pub fn check_now() -> anyhow::Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn startup_checks_cached_releases_without_waiting_six_hours() {
+        assert_eq!(
+            startup_delay(1000, 1000 + 2 * 60 * 60),
+            Duration::from_secs(5)
+        );
+        assert_eq!(startup_delay(1000, 1020), Duration::from_secs(40));
+        assert_eq!(startup_delay(1000, 1000), Duration::from_secs(60));
+        assert_eq!(startup_delay(0, 1000000), Duration::from_secs(5));
+        assert_eq!(startup_delay(2000, 1000), Duration::from_secs(5));
+    }
     #[test]
     fn stable_versions_and_safe_downloads() {
         assert!(Version::parse("v1.10.0") > Version::parse("1.9.9"));
