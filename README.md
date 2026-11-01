@@ -2,7 +2,7 @@
 
 Native Rust internet radio receiver for macOS and Windows, with a photographic black brushed-aluminium fascia and live cyan VFD instruments. eframe/egui paints all live display content and interactive control states. CPAL drives CoreAudio/WASAPI; Symphonia decodes AAC-LC and MP3. No webview, browser engine or external decoder executable is bundled.
 
-Version **1.1.1**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
+Version **1.1.2**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
 
 ![Radio Crash Desktop native receiver](docs/receiver.png)
 
@@ -18,6 +18,10 @@ The default is **780 × 286 logical desktop points**, substantially smaller than
 - Width range is 560–1920 points; custom unlocked height is 206–1080 points. Detail text is naturally smaller at the smallest sizes. macOS Retina screenshots have twice as many pixels as the window's logical point dimensions.
 
 POWER switches streaming off/on. PLAY / STOP controls the continuous station. Drag or scroll over VOLUME; double-click the knob to mute. MUTE also toggles mute. The live volume value is available in the display and knob tooltip. A size-only settings change does not interrupt audio. Connection URL, metadata URL and device changes restart a playing connection.
+
+Click **EXIT** at the top right of the receiver to stop playback and close the entire application. This is separate from Power/standby. Windows also has its standard title-bar **X** and **Alt+F4**. The Windows title bar uses the normal decorated client area to avoid the known borderless OpenGL rendering/input offset on some legacy Intel/Windows 10 systems. macOS retains its borderless receiver, **EXIT** and **Cmd+Q**. The Windows executable explicitly declares Per-Monitor V2 DPI awareness with a Per-Monitor fallback in its embedded manifest, following [Microsoft's guidance](https://learn.microsoft.com/en-us/windows/win32/hidpi/setting-the-default-dpi-awareness-for-a-process).
+
+A shared logical-point transform positions the fascia and clickable surfaces, including letterboxing at custom aspect ratios. Power, Play/Stop, Mute and Settings now accept clicks across their complete visible metal surfaces. No hardcoded pointer offset is applied. These geometry tests cannot verify a physical Windows GPU/driver; the HP Windows 10 Pro machine still needs a manual check.
 
 Left-click the upper-left chassis screw to minimize directly to live L/R tray meters. Its hit area is separate from the chassis drag region. Playback continues while minimized. Right-click the upper chassis → **Minimize to tray · L/R meters** hides the receiver and leaves two animated, PCM-driven L/R meters in the macOS menu bar or Windows notification area. Left-click the meters to restore; right-click for Show Radio Crash / Quit Radio Crash. On macOS, tray-only mode also removes the Dock icon and restores it with the receiver. The optional Settings → Minimize to tray preference applies this behavior to Cmd+M / Ctrl+M and ordinary minimization; otherwise normal Dock/taskbar minimization remains available.
 

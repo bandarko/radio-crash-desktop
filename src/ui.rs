@@ -1,3 +1,4 @@
+use crate::panel::{self, Panel};
 use crate::{audio::Engine, dsp::Meters, platform, settings::Settings, skins::*};
 use eframe::egui::*;
 use std::time::{Duration, Instant};
@@ -140,7 +141,7 @@ impl RadioApp {
         ctx.request_repaint();
     }
     fn button(&self, ui: &mut Ui, r: Rect, kind: &str, lit: bool) -> Response {
-        let response = ui.interact(r, Id::unique(kind), Sense::click());
+        let response = panel::click_target(ui, r, kind);
         let p = ui.painter();
         if response.hovered() {
             p.rect_filled(
@@ -153,7 +154,18 @@ impl RadioApp {
                 }),
             );
         }
-        let s = r.height() / 44.;
+        let s = match kind {
+            "power" => 40.,
+            "transport" | "mute" => 42.,
+            _ => 40.,
+        } * (r.width()
+            / match kind {
+                "power" => 66.,
+                "transport" => 128.,
+                "mute" => 79.,
+                _ => 60.,
+            })
+            / 44.;
         let c = r.center();
         let ink = if lit {
             CYAN
@@ -286,11 +298,8 @@ impl RadioApp {
             self.resize_save = Some(Instant::now());
         }
         // Hit-test the visible metal rim, not the transparent canvas around the feet.
-        let scale = (current.x / 1200.).min(current.y / 440.);
-        let origin = area.center() - vec2(600., 220.) * scale;
-        let handle = |x: f32, y: f32, w: f32, h: f32| {
-            Rect::from_min_size(origin + vec2(x, y) * scale, vec2(w, h) * scale)
-        };
+        let panel = Panel::new(area);
+        let handle = |x, y, w, h| panel.rect([x, y, w, h]);
         let handles = [
             (
                 0,
@@ -611,22 +620,21 @@ impl eframe::App for RadioApp {
             self.meters.spectrum[i] = crate::dsp::follow(self.meters.spectrum[i], t, dt, 90.);
         }
         let area = ui.max_rect();
-        let scale = (area.width() / 1200.).min(area.height() / 440.);
-        let base = area.center() - vec2(600., 220.) * scale;
-        let pt = |x: f32, y: f32| base + vec2(x, y) * scale;
-        let rect =
-            |x: f32, y: f32, w: f32, h: f32| Rect::from_min_size(pt(x, y), vec2(w, h) * scale);
+        let panel = Panel::new(area);
+        let scale = panel.scale;
+        let base = panel.origin;
+        let rect = |x, y, w, h| panel.rect([x, y, w, h]);
         let p = ui.painter().clone();
         p.rect_filled(area, 0., Color32::TRANSPARENT);
         self.materials.paint(&p, rect(0., 0., 1200., 440.));
         self.materials
             .logo(&p, rect(94., 49., 205., 205. * 67. / 900.));
-        let screw = minimize_screw(ui, rect(14., 19., 43., 41.));
+        let screw = minimize_screw(ui, panel.rect(panel::MINIMIZE));
         if screw.clicked() {
             self.minimize_to_tray(&ctx);
         }
         let drag = ui.interact(
-            rect(62., 30., 1093., 62.),
+            panel.rect(panel::DRAG),
             Id::unique("chassis-drag"),
             Sense::click_and_drag(),
         );
@@ -670,6 +678,7 @@ impl eframe::App for RadioApp {
                 ctx.send_viewport_cmd(ViewportCommand::Close);
             }
         });
+        panel::exit_button(ui, panel.rect(panel::EXIT));
         // Coordinates below map the live phosphor plane inside the photographed glass aperture.
         let pt = |x: f32, y: f32| {
             base + vec2(
@@ -940,7 +949,7 @@ impl eframe::App for RadioApp {
         );
         ui.interact(badge,Id::unique("hd-radio-quality"),Sense::hover()).on_hover_text(format!("Radio Crash oznaka kvalitete streama. Pun sjaj od {} kbps. Internetski radio; nije HD Radio/IBOC prijamnik.",self.settings.hd_kbps));
         if self
-            .button(ui, rect(89., 308., 55., 40.), "power", self.power)
+            .button(ui, panel.rect(panel::POWER), "power", self.power)
             .clicked()
         {
             self.power = !self.power;
@@ -952,7 +961,7 @@ impl eframe::App for RadioApp {
         }
         let running = self.engine.running();
         if self
-            .button(ui, rect(230., 307., 110., 42.), "transport", running)
+            .button(ui, panel.rect(panel::PLAY), "transport", running)
             .clicked()
             && self.power
         {
@@ -963,7 +972,7 @@ impl eframe::App for RadioApp {
             }
         }
         if self
-            .button(ui, rect(705., 307., 62., 42.), "mute", self.mute)
+            .button(ui, panel.rect(panel::MUTE), "mute", self.mute)
             .clicked()
         {
             self.mute = !self.mute;
@@ -972,7 +981,7 @@ impl eframe::App for RadioApp {
         let radius = 54. * scale;
         let knob = ui
             .interact(
-                Rect::from_center_size(center, vec2(radius * 2.15, radius * 2.15)),
+                panel.volume(),
                 Id::unique("volume"),
                 Sense::click_and_drag(),
             )
@@ -1001,7 +1010,7 @@ impl eframe::App for RadioApp {
             Stroke::new(1.4 * scale, Color32::from_rgb(213, 214, 193)),
         );
         if self
-            .button(ui, rect(1066., 309., 43., 40.), "settings", false)
+            .button(ui, panel.rect(panel::SETTINGS), "settings", false)
             .clicked()
         {
             self.show_settings = true;
@@ -1068,7 +1077,8 @@ mod interaction_tests {
             let ctx = Context::default();
             let scale = width / 1200.;
             let area = Rect::from_min_size(Pos2::ZERO, vec2(width, 440. * scale));
-            let r = Rect::from_min_size(pos2(14., 19.) * scale, vec2(43., 41.) * scale);
+            let panel = Panel::new(area);
+            let r = panel.rect(panel::MINIMIZE);
             let point = r.center();
             let mut clicked = false;
             for (frame, events) in [
@@ -1103,7 +1113,7 @@ mod interaction_tests {
                         clicked |= minimize_screw(ui, r).clicked();
                         // The chassis drag target must not steal screw clicks.
                         ui.interact(
-                            Rect::from_min_size(pos2(62., 30.) * scale, vec2(1093., 62.) * scale),
+                            panel.rect(panel::DRAG),
                             Id::unique("test-drag"),
                             Sense::click_and_drag(),
                         );

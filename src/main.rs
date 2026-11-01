@@ -3,6 +3,7 @@ mod audio;
 mod audio_resample;
 mod dsp;
 mod metadata;
+mod panel;
 mod platform;
 mod settings;
 mod skins;
@@ -67,7 +68,9 @@ fn main() -> anyhow::Result<()> {
             .with_min_inner_size([560., 200.])
             .with_resizable(true)
             .with_title("Radio Crash Desktop")
-            .with_decorations(false)
+            // Native Windows chrome avoids the legacy Intel/Win10 borderless
+            // OpenGL drawable/client offset and provides standard X / Alt+F4.
+            .with_decorations(cfg!(target_os = "windows"))
             .with_transparent(true)
             .with_icon(
                 eframe::icon_data::from_png_bytes(include_bytes!("../assets/RadioCrash.png"))
