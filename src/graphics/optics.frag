@@ -61,10 +61,16 @@ void main() {
     protected_area=max(protected_area,step(352.0,p.y));
     float knob=1.0-smoothstep(50.0,53.0,length(p-vec2(911,319)));
     float metal=face*(1.0-protected_area)*(1.0-knob);
+    // Suppress frequencies above the device-pixel Nyquist limit when resized.
+    // Derivatives are evaluated before the per-fragment material mask branch.
+    float grain_phase=p.y*3.2+sin(p.y*0.9)*1.7+sin(p.x*0.012)*0.7;
+    float grain=sin(grain_phase)*(1.0-smoothstep(1.4,3.14,fwidth(grain_phase)));
+    vec2 k=p-vec2(911,319);
+    float ring_phase=length(k)*4.0;
+    float rings=sin(ring_phase)*0.012*(1.0-smoothstep(1.4,3.14,fwidth(ring_phase)));
     if(metal<0.001 && knob<0.001) { color=raw; return; }
     vec3 c=linearize(raw.rgb);
-    // Subpixel directional grain is static in physical panel coordinates.
-    float grain=sin(p.y*13.71+sin(p.y*2.19)*1.7+sin(p.x*0.012)*0.7);
+    // Directional grain is static in physical panel coordinates.
     float sheen=bell(p.x+p.y*0.28,120.0,190.0)*0.027
         +bell(p.x-p.y*0.12,1080.0,230.0)*0.012;
     c*=1.0+metal*(grain*0.025+sheen);
@@ -72,10 +78,8 @@ void main() {
     // Faint phosphor spill reaches only the aluminium lip next to the glass.
     float spill=bell(p.y,253.0,8.0)*box(p,vec4(69,245,1062,28));
     c+=vec3(0.0,0.00075,0.0010)*spill*signal_light*brightness*metal;
-    vec2 k=p-vec2(911,319);
     float angle=atan(k.y,k.x);
     float radial=pow(abs(cos(angle+0.75)),18.0)*0.014;
-    float rings=sin(length(k)*15.0)*0.012;
     c*=1.0+knob*(radial+rings);
     // A restrained machined edge, with the real knob position affecting the glint.
     float rim=bell(length(k),47.0,1.3);

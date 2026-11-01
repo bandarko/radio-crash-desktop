@@ -7,7 +7,7 @@ The stable eframe 0.37 glow renderer paints the complete original receiver first
 1. A bounded RGBA8 capture contains the actual VFD text, bars, holds and clock at native device-pixel resolution.
 2. Colored emission is extracted in linear light to quarter-resolution RGBA16F targets. A separable Gaussian blur creates optical scattering.
 3. A glass composite adds restrained bloom, a small internal reflection and recessed-edge attenuation. The Day/Night brightness is part of emission extraction.
-4. A separate full-panel pass adds fine directional metal sheen, faint real-signal spill at the glass lip and machined-knob highlights. Masks preserve the exact white logo, printed legend, existing HD badge, glass, button faces and transparent perimeter.
+4. A separate full-panel pass adds device-pixel-filtered directional metal sheen, faint real-signal spill at the glass lip and machined-knob highlights. Masks preserve the exact white logo, printed legend, existing HD badge, glass, button faces and transparent perimeter.
 
 These are SDR optics. Internal floating-point textures are not an HDR swapchain. The application does not claim EDR/HDR presentation or change OS brightness, HDR, color profiles or GPU preferences. The original photograph remains the material base; there is no 3D scene, camera tracking or environment capture.
 
