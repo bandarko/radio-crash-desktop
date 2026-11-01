@@ -32,6 +32,7 @@ pub struct RadioApp {
     engine: Engine,
     settings: Settings,
     show_settings: bool,
+    power_menu_on_launch: bool,
     power: bool,
     mute: bool,
     meters: Meters,
@@ -107,6 +108,7 @@ impl RadioApp {
             engine,
             settings,
             show_settings: std::env::args().any(|a| a == "--settings"),
+            power_menu_on_launch: std::env::args().any(|a| a == "--power-menu"),
             meters: Meters::default(),
             last: Instant::now(),
             start: Instant::now(),
@@ -948,6 +950,9 @@ impl eframe::App for RadioApp {
         );
         ui.interact(badge,Id::unique("hd-radio-quality"),Sense::hover()).on_hover_text(format!("Radio Crash oznaka kvalitete streama. Pun sjaj od {} kbps. Internetski radio; nije HD Radio/IBOC prijamnik.",self.settings.hd_kbps));
         let power = self.button(ui, panel.rect(panel::POWER), "power", self.power);
+        if std::mem::take(&mut self.power_menu_on_launch) {
+            Popup::open_id(&ctx, Popup::default_response_id(&power));
+        }
         if let Some(action) = panel::power_menu(&power, self.power) {
             self.power = action == panel::PowerAction::On;
             if self.power {

@@ -53,13 +53,29 @@ pub fn power_menu(response: &Response, powered: bool) -> Option<PowerAction> {
         .frame(
             Frame::popup(&response.ctx.global_style())
                 .fill(Color32::from_rgb(22, 25, 25))
-                .stroke(Stroke::new(1., Color32::from_rgb(90, 91, 85)))
+                .stroke(Stroke::new(1., Color32::from_rgb(100, 121, 123)))
                 .inner_margin(8.),
         )
         .show(|ui| {
-            ui.set_min_width(136.);
+            // The popup has a dark hardware surface even when macOS/Windows
+            // uses a light theme. Scope both foreground and interaction colors
+            // here instead of inheriting dark-on-light system text.
+            *ui.visuals_mut() = Visuals::dark();
+            ui.visuals_mut().override_text_color = Some(Color32::from_rgb(240, 246, 245));
+            ui.visuals_mut().widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
+            ui.visuals_mut().widgets.inactive.bg_stroke = Stroke::NONE;
+            ui.visuals_mut().widgets.hovered.bg_fill = Color32::from_rgb(39, 72, 76);
+            ui.visuals_mut().widgets.hovered.weak_bg_fill = Color32::from_rgb(39, 72, 76);
+            ui.visuals_mut().widgets.hovered.bg_stroke =
+                Stroke::new(1., Color32::from_rgb(100, 224, 231));
+            ui.visuals_mut().widgets.active.weak_bg_fill = Color32::from_rgb(49, 89, 93);
+            ui.visuals_mut().widgets.active.bg_fill = Color32::from_rgb(49, 89, 93);
+            ui.set_min_width(160.);
+            let choice = |label: &str| {
+                Button::new(RichText::new(label).size(16.).strong()).min_size(vec2(160., 36.))
+            };
             if ui
-                .button(if powered { "OFF" } else { "ON" })
+                .add(choice(if powered { "OFF" } else { "ON" }))
                 .on_hover_text(if powered {
                     "Stop radio and enter standby"
                 } else {
@@ -76,7 +92,7 @@ pub fn power_menu(response: &Response, powered: bool) -> Option<PowerAction> {
             }
             ui.separator();
             if ui
-                .button("EXIT")
+                .add(choice("EXIT"))
                 .on_hover_text("Stop audio and close the entire application")
                 .clicked()
             {

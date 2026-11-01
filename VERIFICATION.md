@@ -1,3 +1,10 @@
+# Verification - 1.1.4 POWER menu contrast
+
+- The root cause was a custom dark popup frame combined with foreground colors inherited from a light system theme. The popup now scopes its own dark visuals and explicit bright foreground, independently of settings-window/system colors.
+- Existing POWER menu interaction tests cover actual popup open, ON/OFF, EXIT and dismiss actions.
+- Native menu rendering is inspected with the supported `--power-menu` launch flag and an isolated configuration. The flag opens the real menu and does not perform an action.
+- Signing, notarization, ZIP roundtrip validation and native build CI are recorded in the release manifest. Windows pointer/runtime verification remains separate.
+
 # Verification - 1.1.3 update discovery
 
 - A deterministic regression test proves that a two-hour-old successful check schedules a five-second startup check, rather than a four-hour wait. It also covers a just-finished check, rapid relaunches, missing cache and a future timestamp/clock correction.

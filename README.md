@@ -2,7 +2,7 @@
 
 Native Rust internet radio receiver for macOS and Windows, with a photographic black brushed-aluminium fascia and live cyan VFD instruments. eframe/egui paints all live display content and interactive control states. CPAL drives CoreAudio/WASAPI; Symphonia decodes AAC-LC and MP3. No webview, browser engine or external decoder executable is bundled.
 
-Version **1.1.3**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
+Version **1.1.4**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
 
 ![Radio Crash Desktop native receiver](docs/receiver.png)
 
@@ -130,3 +130,5 @@ cargo run --release -- --autoplay --tray-check /absolute/path/to/qa-dir
 ```
 
 The resulting tray-check.json includes hidden logic ticks, changed native icon uploads, actual stereo RMS, playback status and the native Mac tray-only activation policy.
+
+For native visual QA, `--power-menu` opens the actual POWER popup once on launch. Combine it with an isolated `RC_CONFIG_DIR` and `--capture` for a rendered preview; it does not select an action. The popup explicitly uses bright text and dark interaction colors independently of the OS theme.

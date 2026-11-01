@@ -1,3 +1,19 @@
+# Radio Crash Desktop 1.1.4
+
+1. studenoga 2026.
+
+- Ispravljen preslab kontrast izbornika POWER u svijetloj temi sustava. OFF, ON i EXIT sada koriste svijetli, veći i podebljani tekst na tamnoj podlozi.
+- Povećane su površine stavki, a stavka pod pokazivačem dobiva jasno istaknutu tirkiznu podlogu.
+- Izgled kućišta, funkcije POWER izbornika, audio, VU i provjera ažuriranja ostaju nepromijenjeni.
+
+Mac paket je potpisan i notariziran. Windows EXE nije Authenticode potpisan; fizički Windows rad nije ručno provjeren u ovoj provjeri.
+
+## English
+
+POWER menu items now use an explicit dark UI palette and bright 16-point bold text, fixing dark system-theme text inherited over the custom dark popup. Rows are taller and have a distinct hover background. The receiver artwork, ON/OFF/EXIT actions, audio, DSP and updater behavior are unchanged.
+
+---
+
 # Radio Crash Desktop 1.1.3
 
 1. studenoga 2026.
