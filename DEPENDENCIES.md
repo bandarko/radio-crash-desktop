@@ -67,6 +67,7 @@ Generated from pinned Cargo.lock and cargo metadata. Includes target-specific an
 | crossbeam-utils | 0.8.23 | MIT OR Apache-2.0 | [upstream](https://github.com/crossbeam-rs/crossbeam) |
 | crunchy | 0.2.4 | MIT | [upstream](https://github.com/eira-fransham/crunchy) |
 | cursor-icon | 1.2.0 | MIT OR Apache-2.0 OR Zlib | [upstream](https://github.com/rust-windowing/cursor-icon) |
+| dasp_frame | 0.11.0 | MIT OR Apache-2.0 | [upstream](https://github.com/rustaudio/dasp.git) |
 | dasp_sample | 0.11.0 | MIT OR Apache-2.0 | [upstream](https://github.com/rustaudio/sample.git) |
 | defmt | 1.2.0 | MIT OR Apache-2.0 | [upstream](https://github.com/knurling-rs/defmt) |
 | defmt-macros | 1.2.0 | MIT OR Apache-2.0 | [upstream](https://github.com/knurling-rs/defmt) |
@@ -81,6 +82,7 @@ Generated from pinned Cargo.lock and cargo metadata. Includes target-specific an
 | document-features | 0.2.12 | MIT OR Apache-2.0 | [upstream](https://github.com/slint-ui/document-features) |
 | downcast-rs | 1.2.1 | MIT/Apache-2.0 | [upstream](https://github.com/marcianx/downcast-rs) |
 | dpi | 0.1.2 | Apache-2.0 AND MIT | [upstream](https://github.com/rust-windowing/winit) |
+| ebur128 | 0.1.11 | MIT | [upstream](https://github.com/sdroege/ebur128) |
 | ecolor | 0.37.0 | MIT OR Apache-2.0 | [upstream](https://github.com/emilk/egui) |
 | eframe | 0.37.0 | MIT OR Apache-2.0 | [upstream](https://github.com/emilk/egui/tree/main/crates/eframe) |
 | egui | 0.37.0 | MIT OR Apache-2.0 | [upstream](https://github.com/emilk/egui) |

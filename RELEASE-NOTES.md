@@ -1,3 +1,21 @@
+# Radio Crash Desktop 1.2.0
+
+1. studenoga 2026.
+
+- Dodana su napredna mjerenja True Peak i LUFS iz stvarnog PCM-a koji se reproducira. True Peak procjenjuje i vrhove između digitalnih uzoraka.
+- Settings > Live signal measurements prikazuje momentary (400 ms) i short-term (3 s) LUFS te zasebno zadržane L/R True Peak vrijednosti u dBTP. Vrijednosti čekaju puni mjerni prozor, a tišina se prikazuje kao nedostupna.
+- Glavni instrument i tray zadržavaju odobreni RMS peak hold iz 1.1.5: maksimum iste RMS trake, dvije sekunde zadržavanja i puni svjetleći segment u samom L/R retku s bojom svoje zone. Nema pokazivača ni tanke oznake iznad traka.
+- Tray sada poštuje i odabrani Faster VU decay. Sačuvani su VU osjetljivost, glasnoća, FFT, HD Radio iluminator i izgled receivera.
+- Nema normalizacije ni kompresije zvuka. Relativne crvene oznake na Hi-Fi skali nisu same po sebi dokaz digitalnog clippinga; apsolutni dBTP nalazi se u naprednim mjerenjima.
+
+## English
+
+Advanced signal measurements now show independent oversampled True Peak in dBTP plus momentary (400 ms) and short-term (3 s) LUFS. Analysis uses consumed pre-volume PCM on the existing worker, with bounded history, complete-window warm-up and graceful silence handling. The main receiver and tray retain the approved 1.1.5 RMS hold: the maximum of the same envelope as the bar, independent two-second hold, and full zone-colored in-row filament shape. True Peak is intentionally confined to advanced measurements. The tray now respects Faster VU decay. No output gain, normalization, compression, RMS calibration, FFT or fascia change is made. This is not a certified broadcast meter or exact analogue-meter emulation.
+
+Packaging and platform validation are recorded in the release manifest. Windows hardware playback remains manually unverified; Windows downloads are not Authenticode-signed.
+
+---
+
 # Radio Crash Desktop 1.1.5
 
 1. studenoga 2026.

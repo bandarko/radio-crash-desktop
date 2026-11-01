@@ -9,6 +9,10 @@ pub struct Meters {
     pub rms: [f32; 2],
     pub peaks: [f32; 2],
     pub held_peaks: [f32; 2],
+    pub held_rms: [f32; 2],
+    pub true_peaks: Option<[f32; 2]>,
+    pub momentary_lufs: Option<f64>,
+    pub short_term_lufs: Option<f64>,
     pub spectrum: [f32; 10],
     pub available: [bool; 10],
 }
@@ -18,6 +22,10 @@ impl Default for Meters {
             rms: [-60.; 2],
             peaks: [-60.; 2],
             held_peaks: [-60.; 2],
+            held_rms: [-60.; 2],
+            true_peaks: None,
+            momentary_lufs: None,
+            short_term_lufs: None,
             spectrum: [-60.; 10],
             available: [false; 10],
         }
@@ -126,6 +134,68 @@ pub struct PeakHold {
     value: [f32; 2],
     until: [f64; 2],
 }
+
+/// Consumed-PCM broadcast measurements. All filtering runs on the analysis
+/// worker, never the audio callback or GUI. S mode keeps only a bounded 3 s
+/// ring; no unbounded integrated loudness history or normalization is enabled.
+pub struct BroadcastMeter {
+    ebu: ebur128::EbuR128,
+    rate: u32,
+    frames: u64,
+    next_loudness: u64,
+    momentary: Option<f64>,
+    short_term: Option<f64>,
+    hold: PeakHold,
+}
+pub struct BroadcastLevels {
+    pub true_peaks: [f32; 2],
+    pub held_peaks: [f32; 2],
+    pub momentary_lufs: Option<f64>,
+    pub short_term_lufs: Option<f64>,
+}
+impl BroadcastMeter {
+    pub fn new(rate: u32) -> Result<Self, ebur128::Error> {
+        Ok(Self {
+            ebu: ebur128::EbuR128::new(2, rate, ebur128::Mode::S | ebur128::Mode::TRUE_PEAK)?,
+            rate,
+            frames: 0,
+            next_loudness: 0,
+            momentary: None,
+            short_term: None,
+            hold: PeakHold::new(),
+        })
+    }
+    pub fn observe(&mut self, frames: &[[f32; 2]]) -> Result<BroadcastLevels, ebur128::Error> {
+        self.ebu.add_frames_f32(frames.as_flattened())?;
+        self.frames += frames.len() as u64;
+        let true_peaks = [
+            db(self.ebu.prev_true_peak(0)? as f32),
+            db(self.ebu.prev_true_peak(1)? as f32),
+        ];
+        let held_peaks = self
+            .hold
+            .observe(true_peaks, self.frames as f64 / self.rate as f64);
+        // The library zero-pads at startup. Publish only complete time windows,
+        // then sample LUFS at 10 Hz. Silence remains unavailable, not fake zero.
+        if self.frames >= self.next_loudness {
+            self.next_loudness = self.frames + (self.rate / 10) as u64;
+            if self.frames >= self.rate as u64 * 2 / 5 {
+                let value = self.ebu.loudness_momentary()?;
+                self.momentary = (value.is_finite() && value >= -100.).then_some(value);
+            }
+            if self.frames >= self.rate as u64 * 3 {
+                let value = self.ebu.loudness_shortterm()?;
+                self.short_term = (value.is_finite() && value >= -100.).then_some(value);
+            }
+        }
+        Ok(BroadcastLevels {
+            true_peaks,
+            held_peaks,
+            momentary_lufs: self.momentary,
+            short_term_lufs: self.short_term,
+        })
+    }
+}
 impl PeakHold {
     pub fn new() -> Self {
         Self {
@@ -218,6 +288,100 @@ impl Analyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn tone(rate: u32, frequency: f64, amplitude: f64, count: usize) -> Vec<[f32; 2]> {
+        (0..count)
+            .map(|i| {
+                let sample = (std::f64::consts::TAU * frequency * i as f64 / rate as f64
+                    + std::f64::consts::FRAC_PI_4)
+                    .sin()
+                    * amplitude;
+                [sample as f32; 2]
+            })
+            .collect()
+    }
+    #[test]
+    fn true_peak_finds_intersample_overs_and_keeps_stereo_independent() {
+        let mut meter = BroadcastMeter::new(48000).unwrap();
+        let mut frames = tone(48000, 12000., 1.1, 48000);
+        for f in &mut frames {
+            f[1] = 0.;
+        }
+        let mut last = None;
+        for chunk in frames.chunks(256) {
+            last = Some(meter.observe(chunk).unwrap());
+        }
+        let last = last.unwrap();
+        let sample_peak = levels(&frames).1;
+        assert!(sample_peak[0] < -2.);
+        assert!(
+            last.true_peaks[0] > 0.5 && last.true_peaks[0] < 1.2,
+            "{:?}",
+            last.true_peaks
+        );
+        assert!(last.true_peaks[0] - sample_peak[0] > 2.5);
+        assert_eq!(last.true_peaks[1], -60.);
+        assert_eq!(last.held_peaks[1], -60.);
+    }
+    #[test]
+    fn broadcast_silence_warmup_and_reset_do_not_publish_fake_values() {
+        let mut meter = BroadcastMeter::new(48000).unwrap();
+        let short = meter.observe(&tone(48000, 1000., 0.1, 4800)).unwrap();
+        assert!(short.momentary_lufs.is_none() && short.short_term_lufs.is_none());
+        let mut last = short;
+        for _ in 0..800 {
+            last = meter.observe(&[[0.; 2]; 256]).unwrap();
+        }
+        assert_eq!(last.true_peaks, [-60.; 2]);
+        assert_eq!(last.held_peaks, [-60.; 2]);
+        assert!(last.momentary_lufs.is_none());
+        assert!(last.short_term_lufs.is_none());
+        let mut restarted = BroadcastMeter::new(48000).unwrap();
+        let reset = restarted.observe(&[[0.; 2]; 256]).unwrap();
+        assert_eq!(reset.held_peaks, [-60.; 2]);
+        assert!(reset.short_term_lufs.is_none());
+    }
+    #[test]
+    fn true_peak_and_loudness_are_independent_of_worker_chunk_size() {
+        let frames = tone(44100, 11025., 0.5, 44100);
+        let mut one = BroadcastMeter::new(44100).unwrap();
+        let mut split = BroadcastMeter::new(44100).unwrap();
+        let whole = one.observe(&frames).unwrap();
+        let mut highest = [-60f32; 2];
+        for part in frames.chunks(127) {
+            let part = split.observe(part).unwrap();
+            for (highest, value) in highest.iter_mut().zip(part.true_peaks) {
+                *highest = highest.max(value);
+            }
+        }
+        for (a, b) in whole.true_peaks.into_iter().zip(highest) {
+            assert!((a - b).abs() < 0.001);
+        }
+        assert!(
+            (one.ebu.loudness_momentary().unwrap() - split.ebu.loudness_momentary().unwrap()).abs()
+                < 0.00001
+        );
+    }
+    #[test]
+    fn known_stereo_loudness_and_gain_at_supported_output_rates() {
+        for rate in [32000, 44100, 48000, 96000, 192000] {
+            let mut meter = BroadcastMeter::new(rate).unwrap();
+            let frames = tone(rate, 1000., 0.1, rate as usize * 4);
+            let mut last = None;
+            for chunk in frames.chunks(256) {
+                last = Some(meter.observe(chunk).unwrap());
+            }
+            let last = last.unwrap();
+            let m = last.momentary_lufs.unwrap();
+            let s = last.short_term_lufs.unwrap();
+            assert!((m + 20.).abs() < 0.15, "rate {rate}: {m}");
+            assert!((s - m).abs() < 0.02);
+            assert!((last.true_peaks[0] + 20.).abs() < 0.1);
+            let mut quieter = BroadcastMeter::new(rate).unwrap();
+            let half: Vec<_> = frames.iter().map(|f| [f[0] * 0.5, f[1] * 0.5]).collect();
+            let half = quieter.observe(&half).unwrap();
+            assert!((half.momentary_lufs.unwrap() - m + 6.0206).abs() < 0.02);
+        }
+    }
     #[test]
     fn silence() {
         let m = Analyzer::new().analyze(&vec![[0.; 2]; N], 48000);

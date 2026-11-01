@@ -395,7 +395,22 @@ impl RadioApp {
                     });
                     let mut sensitivity=-self.settings.vu_reference_dbfs;
                     if ui.add(Slider::new(&mut sensitivity,0.0..=24.0).step_by(0.5).text("VU sensitivity · dB")).changed(){self.settings.vu_reference_dbfs = -sensitivity;}
-                    ui.small("Meter display only; audio volume is unchanged. Main and tray meters use the same calibration.\nPeak hold: highest VU level, 2 seconds, automatic reset.");
+                    ui.small("RMS bars show musical energy. Peak hold remembers the highest level of the same RMS bar for 2 seconds.\nThe scale is relative to the selected reference; red segments alone do not mean clipping.");
+                    CollapsingHeader::new("Live signal measurements").show(ui, |ui| {
+                        let snap = self.engine.state.lock().unwrap().clone();
+                        let m = &snap.meters;
+                        let value = |v: Option<f64>, unit: &str| v.map(|v| format!("{v:.1} {unit}")).unwrap_or_else(|| "Unavailable / warming up".into());
+                        ui.label(format!("Momentary (400 ms): {}", value(m.momentary_lufs, "LUFS")));
+                        ui.label(format!("Short-term (3 s): {}", value(m.short_term_lufs, "LUFS")));
+                        if m.true_peaks.is_some() {
+                            ui.label(format!("True Peak hold: L {:+.1} / R {:+.1} dBTP", m.held_peaks[0], m.held_peaks[1]));
+                            if m.held_peaks.iter().any(|v| *v > 0.) {
+                                let color = if ui.visuals().dark_mode { Color32::LIGHT_RED } else { Color32::from_rgb(157, 37, 26) };
+                                ui.colored_label(color,"Above 0 dBTP in the decoded stream (before volume).");
+                            }
+                        } else { ui.label("True Peak: unavailable"); }
+                        ui.small("Measured from playback PCM before volume. No loudness normalization or audio processing. Silence has no finite LUFS value.");
+                    });
                     ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
                     ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD SOUND threshold · kbps"));
                     ui.small("HD SOUND is a Radio Crash quality badge based on measured bitrate.\nMeters show the stream level before volume adjustment.");
@@ -516,6 +531,7 @@ impl eframe::App for RadioApp {
                 &snapshot.meters,
                 self.engine.running(),
                 self.settings.vu_reference_dbfs,
+                self.settings.fast_vu,
             );
             tray.poll()
         } else {
@@ -753,13 +769,13 @@ impl eframe::App for RadioApp {
             let level =
                 crate::dsp::vu_segment_index(self.meters.rms[c], self.settings.vu_reference_dbfs);
             let held = crate::dsp::vu_segment_index(
-                snap.meters.held_peaks[c],
+                snap.meters.held_rms[c],
                 self.settings.vu_reference_dbfs,
             );
             for (i, db) in crate::dsp::VU_SCALE.iter().enumerate() {
                 let x = 98. + i as f32 * 8.;
-                // Peak hold is a real filament segment in the same row and zone
-                // color, rather than an external cursor/dot above the meter.
+                // Keep the approved full, zone-colored filament in the L/R
+                // row. This is the maximum of the SAME RMS detector as the bar.
                 let on = level.is_some_and(|last| i <= last) || held == Some(i);
                 for row in 0..2 {
                     segment_with_color(

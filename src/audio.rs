@@ -293,6 +293,9 @@ fn session(
         let mut vu_index = 0;
         let mut rms_meter = crate::dsp::RmsMeter::new(output_rate);
         let mut peak_hold = crate::dsp::PeakHold::new();
+        let mut broadcast = crate::dsp::BroadcastMeter::new(output_rate)
+            .map_err(|e| log::warn!("Broadcast meter unavailable: {e}"))
+            .ok();
         let mut analyzed_frames = 0u64;
         while !ls.load(Ordering::Relaxed) && !gs.load(Ordering::Relaxed) {
             while let Some(f) = a.pop() {
@@ -305,10 +308,30 @@ fn session(
                         measured.max_rms,
                         analyzed_frames as f64 / output_rate as f64,
                     );
+                    let quality = match broadcast.as_mut().map(|meter| meter.observe(&vu)) {
+                        Some(Ok(measured)) => Some(measured),
+                        Some(Err(e)) => {
+                            log::warn!("Broadcast meter disabled for this session: {e}");
+                            broadcast = None;
+                            None
+                        }
+                        None => None,
+                    };
                     let mut snapshot = st.lock().unwrap();
-                    snapshot.meters.held_peaks = held;
+                    snapshot.meters.held_rms = held;
                     snapshot.meters.rms = measured.rms;
                     snapshot.meters.peaks = measured.sample_peaks;
+                    if let Some(quality) = quality {
+                        snapshot.meters.true_peaks = Some(quality.true_peaks);
+                        snapshot.meters.held_peaks = quality.held_peaks;
+                        snapshot.meters.momentary_lufs = quality.momentary_lufs;
+                        snapshot.meters.short_term_lufs = quality.short_term_lufs;
+                    } else {
+                        snapshot.meters.true_peaks = None;
+                        snapshot.meters.held_peaks = [-60.; 2];
+                        snapshot.meters.momentary_lufs = None;
+                        snapshot.meters.short_term_lufs = None;
+                    }
                     vu_index = 0;
                 }
                 block.push(f);

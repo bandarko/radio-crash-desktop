@@ -124,6 +124,20 @@ mod tests {
         assert!(s.lock_aspect);
     }
     #[test]
+    fn measurement_upgrade_preserves_user_choices() {
+        let upgraded = Settings::decode(
+            br#"{"fast_vu":true,"vu_reference_dbfs":-13,"vu_calibration_version":1}"#,
+        )
+        .unwrap();
+        assert!(upgraded.fast_vu);
+        assert_eq!(upgraded.vu_reference_dbfs, -13.);
+        let classic = Settings::decode(br#"{"fast_vu":true,"vu_reference_dbfs":-18}"#).unwrap();
+        let saved = serde_json::to_vec(&classic).unwrap();
+        let restored = Settings::decode(&saved).unwrap();
+        assert!(restored.fast_vu);
+        assert_eq!(restored.vu_reference_dbfs, -18.);
+    }
+    #[test]
     fn hifi_migration_is_once_and_preserves_explicit_profiles() {
         let old = Settings::decode(br#"{"vu_reference_dbfs":0,"volume":0.4}"#).unwrap();
         assert_eq!(old.vu_reference_dbfs, -15.);

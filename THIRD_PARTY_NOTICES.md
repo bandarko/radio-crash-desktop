@@ -19,3 +19,5 @@ Major libraries: eframe/egui (MIT OR Apache-2.0), CPAL (Apache-2.0), Symphonia (
 The resolved dependency inventory is in `DEPENDENCIES.md`; available upstream license and notice files are copied under `licenses/`. The lockfile and inventory include target-specific dependencies as well as the dependencies used by each shipped executable. Codec patent/licensing obligations depend on jurisdiction and distribution context.
 
 Source code for this application and the exact dependency lockfile are available at https://github.com/bandarko/radio-crash-desktop . Symphonia and its codec crates are used unmodified under MPL-2.0; their corresponding source locations and versions are listed in `DEPENDENCIES.md` and are retrievable from crates.io using `Cargo.lock`. The MPL-2.0 license is included in `licenses/`.
+
+The True Peak / LUFS analyzer uses `ebur128` (MIT) and `dasp_frame` (MIT OR Apache-2.0), implemented in Rust and linked into the app. Their original license notices are included under `licenses/`. No external platform-specific analyzer executable is distributed.

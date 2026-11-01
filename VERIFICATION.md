@@ -1,3 +1,13 @@
+# Verification - 1.2.0 RMS + True Peak
+
+- 41 deterministic tests and strict all-target Clippy pass locally on Apple Silicon. Added cases cover a phase-offset 12 kHz signal whose samples are below -2 dBFS while reconstructed True Peak is above +0.5 dBTP, independent silent R, chunk-boundary invariance, complete LUFS-window warm-up, silence/filter-tail handling, state reset, stereo 1 kHz reference loudness and exact half-gain difference at 32/44.1/48/96/192 kHz. Settings serialization preserves existing calibration and Faster VU choices.
+- A 30-second muted CoreAudio smoke run used the real Radio Crash AAC stream. It reported 30 ON AIR snapshots, both LUFS windows and independent True Peak/hold values. True Peak never fell below sample peak in those snapshots; hold never fell below the current True Peak. The largest sampled inter-sample difference was 1.08 dB. Median RMS mapped to +3.78 / +3.88 VU, with fixed -15 dBFS reference. These are programme-dependent observations, not forced targets.
+- The separate dropping-server regression test passed: three connections, RECONNECTING, recovered AAC playback, resumed True Peak/LUFS and clean shutdown. Its output gain was muted; it made no changes to the production stream.
+- Native receiver and Settings windows were inspected during real playback. The approved 1.1.5 maximum-RMS hold is retained with its full, zone-colored two-filament segment inside each L/R row; there is no separate upper lane, pointer or dot. True Peak is confined to advanced measurements. The native 640-point capture remains readable. The HD Radio lens and fascia are unchanged.
+- Native tray lifecycle: 55 hidden logic ticks and 39 changed icon uploads during six seconds of actual ON AIR playback, tray-only activation, then restore and clean exit. Both tray layouts share the same maximum-RMS hold and reference. The tray now also respects Faster VU decay.
+- True Peak/LUFS run on the existing consumed-PCM analysis worker. Only a bounded 3 s loudness history is enabled. No audio gain, normalization, compression, RMS time constant, FFT normalization or stream integration change is made. Absolute dBTP is separated from the relative Hi-Fi scale in Settings.
+- Signing, notarization, ZIP roundtrip, installed version, update discovery and native CI results are recorded in the release manifest. Physical Windows playback and physical Intel Mac GUI/audio remain manually unverified. The Windows download is not Authenticode-signed.
+
 # Verification - 1.1.5 maximum-VU hold
 
 - Deterministic PCM tests preserve maximum RMS-envelope values within a block while keeping raw sample peaks separate. Chunked and whole-block processing yield the same maximum and final RMS.
