@@ -2,9 +2,17 @@
 
 Native Rust internet radio receiver for macOS and Windows, with a photographic black brushed-aluminium fascia and live cyan VFD instruments. eframe/egui paints all live display content and interactive control states. CPAL drives CoreAudio/WASAPI; Symphonia decodes AAC-LC and MP3. No webview, browser engine or external decoder executable is bundled.
 
-Version **1.2.0**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
+Version **1.3.0**. See [release notes](RELEASE-NOTES.md), [Mac installation](INSTALL-macOS.md) and [Windows installation](INSTALL-Windows.md). Official repository: [bandarko/radio-crash-desktop](https://github.com/bandarko/radio-crash-desktop).
 
 ![Radio Crash Desktop native receiver](docs/receiver.png)
+
+## Adaptive GPU optics
+
+Settings > **Receiver graphics** defaults to **Automatic**. On recognized modern Apple Silicon, NVIDIA, AMD and Intel hardware it adds real GPU glass scattering, floating-point phosphor bloom, restrained directional aluminium lighting and machined-knob highlights. Brightness follows the same live VFD source and Night setting. The original logo, HD Radio illuminator, controls, audio and detector calibration are preserved.
+
+Older, unknown, virtual or software graphics retain the original 1.2.0 appearance automatically. **Classic** explicitly selects that same renderer. Supported but unclassified devices can opt into **Enhanced**. Shader/allocation failures, excessive window size, sustained shader time above the budget or an interrupted enhanced session fall back to Classic. Graphics details show the actual device, active mode and fallback reason. See [graphics architecture and limits](GRAPHICS.md).
+
+This is enhanced **SDR** rendering. Floating-point light calculations do not enable macOS EDR or Windows HDR output. No monitor, driver or operating-system display setting is changed. Windows hardware compatibility still requires native runtime checks; CI builds alone do not verify a physical GPU.
 
 ## VFD day/night brightness and standby clock
 

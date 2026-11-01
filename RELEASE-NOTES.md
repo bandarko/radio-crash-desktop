@@ -1,3 +1,13 @@
+# Radio Crash Desktop 1.3.0
+
+- Adaptive GPU optics add glass scattering, actual VFD phosphor bloom and subtle brushed-metal and rotary-knob highlights on supported modern graphics.
+- Automatic mode keeps the original receiver appearance on older, unknown, software and virtual graphics. Classic remains available manually.
+- Enhanced graphics have bounded allocations, checked shader/framebuffer initialization, asynchronous GPU timing and automatic fallback. An interrupted enhanced graphics session starts safely in Classic on the next launch.
+- Settings show the graphics selection, actual GPU and fallback reason. Changing graphics does not reconnect or process the audio.
+- The small original white logo, SINCE 1986, approved HD Radio illuminator, VU detectors/hold, Night VFD, standby clock and tray meters are preserved.
+- This release uses standard dynamic range output. True HDR/EDR presentation is not enabled.
+- macOS Apple Silicon runtime is checked separately from Intel/Windows builds. Physical Windows GPU and playback verification is not claimed.
+
 # Radio Crash Desktop 1.2.0
 
 1. studenoga 2026.

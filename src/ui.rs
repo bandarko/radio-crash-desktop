@@ -16,6 +16,7 @@ pub struct RadioApp {
     show_update: bool,
     update_seen: Option<crate::updates::Version>,
     materials: Materials,
+    graphics: crate::graphics::Graphics,
     clock: crate::clock_face::ClockFace,
     clock_updated: Instant,
     observed_window: Vec2,
@@ -24,6 +25,7 @@ pub struct RadioApp {
     displayed_track: (String, String),
     track_changed: Instant,
     capture: Option<std::path::PathBuf>,
+    qa_exit: Option<Duration>,
     tray: Option<platform::Tray>,
     hidden_to_tray: bool,
     restore_until: Instant,
@@ -68,6 +70,7 @@ impl RadioApp {
                 .send_viewport_cmd(ViewportCommand::Minimized(true));
         }
         let materials = Materials::new(&cc.egui_ctx);
+        let graphics = crate::graphics::Graphics::new(cc);
         let mut engine = Engine::new();
         engine.volume(settings.volume);
         if settings.autoplay || std::env::args().any(|a| a == "--autoplay") {
@@ -78,6 +81,7 @@ impl RadioApp {
             show_update: false,
             update_seen: None,
             materials,
+            graphics,
             clock: crate::clock_face::ClockFace::now(),
             clock_updated: Instant::now(),
             observed_window: Vec2::ZERO,
@@ -93,6 +97,12 @@ impl RadioApp {
                 .skip_while(|a| a != "--capture")
                 .nth(1)
                 .map(Into::into),
+            qa_exit: std::env::args()
+                .skip_while(|a| a != "--qa-exit-after")
+                .nth(1)
+                .and_then(|v| v.parse::<u64>().ok())
+                .filter(|v| (1..=120).contains(v))
+                .map(Duration::from_secs),
             tray: platform::Tray::new()
                 .map_err(|e| log::warn!("Tray: {e}"))
                 .ok(),
@@ -385,6 +395,7 @@ impl RadioApp {
                     ui.small("Drag the right/bottom edge or lower-right corner to resize. Size is remembered.");
                     ui.separator();
                     ui.label("Skin: VFD Digital - Black Aluminium");
+                    self.graphics.settings(ui, &mut self.settings.graphics_quality);
                     ui.horizontal(|ui| {
                         let mut brightness=self.settings.vfd_brightness*100.;
                         if ui.add(Slider::new(&mut brightness,25.0..=100.0).text("VFD brightness · %")).changed() { self.settings.vfd_brightness=brightness/100.; }
@@ -522,6 +533,14 @@ impl eframe::App for RadioApp {
             self.clock = crate::clock_face::ClockFace::now();
             self.clock_updated = Instant::now();
         }
+        if self
+            .qa_exit
+            .is_some_and(|duration| self.start.elapsed() >= duration)
+        {
+            self.qa_exit = None;
+            ctx.send_viewport_cmd(ViewportCommand::Close);
+        }
+        self.graphics.tick(self.settings.graphics_quality);
         self.updater.tick(true);
         if let crate::updates::State::Available(release) = &self.updater.state
             && self.update_seen != Some(release.version)
@@ -1014,6 +1033,14 @@ impl eframe::App for RadioApp {
                 DIM
             },
         );
+        self.graphics.paint(
+            ui.painter(),
+            panel.rect([70., 99., 1060., 136.]),
+            true,
+            self.settings.vfd_brightness,
+            0.,
+            self.settings.volume,
+        );
         // The photographed hardware surfaces are native interactive controls, never baked indicators.
         let p = ui.painter().clone();
         let scale = (area.width() / 1200.).min(area.height() / 440.);
@@ -1116,6 +1143,21 @@ impl eframe::App for RadioApp {
                 ctx.send_viewport_cmd(ViewportCommand::Minimized(true));
             }
         }
+        let signal = if standby_clock {
+            0.18
+        } else if self.engine.running() {
+            10.0_f32.powf(self.meters.rms[0].max(self.meters.rms[1]) / 20.)
+        } else {
+            0.
+        };
+        self.graphics.paint(
+            ui.painter(),
+            panel.rect([0., 0., 1200., 440.]),
+            false,
+            self.settings.vfd_brightness,
+            signal,
+            self.settings.volume,
+        );
         self.window_controls(ui);
         if self.show_settings {
             self.settings(&ctx);
@@ -1141,7 +1183,8 @@ impl eframe::App for RadioApp {
         }
     }
 
-    fn on_exit(&mut self, _: Option<&eframe::glow::Context>) {
+    fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
+        self.graphics.destroy(gl);
         if let Err(e) = self.settings.save() {
             log::error!("save settings: {e}");
         }

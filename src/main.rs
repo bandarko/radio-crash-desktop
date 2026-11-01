@@ -3,6 +3,7 @@ mod audio;
 mod audio_resample;
 mod clock_face;
 mod dsp;
+mod graphics;
 mod metadata;
 mod panel;
 mod platform;
@@ -78,7 +79,11 @@ fn main() -> anyhow::Result<()> {
             .with_inner_size(size)
             .with_min_inner_size([560., 200.])
             .with_resizable(true)
-            .with_title("Radio Crash Desktop")
+            .with_title(if std::env::args().any(|a| a == "--qa-exit-after") {
+                "Radio Crash Desktop · temporary graphics test"
+            } else {
+                "Radio Crash Desktop"
+            })
             // Native Windows chrome avoids the legacy Intel/Win10 borderless
             // OpenGL drawable/client offset and provides standard X / Alt+F4.
             .with_decorations(cfg!(target_os = "windows"))

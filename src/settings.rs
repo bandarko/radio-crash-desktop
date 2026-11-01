@@ -20,6 +20,7 @@ pub struct Settings {
     pub minimize_to_tray: bool,
     pub spectrum: bool,
     pub vfd_brightness: f32,
+    pub graphics_quality: crate::graphics::Quality,
     pub standby_clock: bool,
     pub fast_vu: bool,
     pub vu_response: crate::dsp::VuResponse,
@@ -42,6 +43,7 @@ impl Default for Settings {
             minimize_to_tray: false,
             spectrum: true,
             vfd_brightness: 1.,
+            graphics_quality: crate::graphics::Quality::Auto,
             standby_clock: true,
             fast_vu: true,
             vu_response: crate::dsp::VuResponse::FastRms,
@@ -159,6 +161,33 @@ mod tests {
         let saved = serde_json::to_value(&settings).unwrap();
         assert!(saved.get("stream_url").is_none());
         assert!(saved.get("metadata_url").is_none());
+    }
+    #[test]
+    fn graphics_upgrade_preserves_audio_preferences_and_classic_selection() {
+        let legacy = Settings::decode(br#"{"volume":0.39,"fast_vu":true,"hd_kbps":260}"#).unwrap();
+        assert_eq!(legacy.graphics_quality, crate::graphics::Quality::Auto);
+        assert_eq!(legacy.volume, 0.39);
+        assert_eq!(legacy.hd_kbps, 260);
+        for quality in [
+            crate::graphics::Quality::Auto,
+            crate::graphics::Quality::Classic,
+            crate::graphics::Quality::Enhanced,
+        ] {
+            let selected = Settings {
+                graphics_quality: quality,
+                ..legacy.clone()
+            };
+            let restored = Settings::decode(&serde_json::to_vec(&selected).unwrap()).unwrap();
+            assert_eq!(restored.graphics_quality, quality);
+            assert_eq!(restored.volume, 0.39);
+            assert_eq!(restored.vu_response, crate::dsp::VuResponse::FastRms);
+        }
+        assert_eq!(
+            Settings::decode(br#"{"graphics_quality":"future"}"#)
+                .unwrap()
+                .graphics_quality,
+            crate::graphics::Quality::Auto
+        );
     }
     #[test]
     fn old_settings_get_compact_window_defaults() {
