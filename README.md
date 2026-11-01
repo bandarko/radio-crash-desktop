@@ -17,7 +17,7 @@ The default is **780 × 286 logical desktop points**, substantially smaller than
 - Keep receiver proportions preserves the physical aspect ratio. Disable it to choose width and height independently; the front panel fits proportionally inside the chosen window and is never stretched or scrolled.
 - Width range is 560–1920 points; custom unlocked height is 206–1080 points. Detail text is naturally smaller at the smallest sizes. macOS Retina screenshots have twice as many pixels as the window's logical point dimensions.
 
-POWER switches streaming off/on. PLAY / STOP controls the continuous station. Drag or scroll over VOLUME; double-click the knob to mute. MUTE also toggles mute. The live volume value is available in the display and knob tooltip. A size-only settings change does not interrupt audio. Connection URL, metadata URL and device changes restart a playing connection.
+POWER switches streaming off/on. PLAY / STOP controls the continuous station. Drag or scroll over VOLUME; double-click the knob to mute. MUTE also toggles mute. The live volume value is available in the display and knob tooltip. A size-only settings change does not interrupt audio. Changing the audio output device restarts a playing connection. The stream and Now Playing endpoint are built in for Radio Crash, with no URL editors in Settings; legacy custom URL preferences are ignored.
 
 Click the existing **POWER** switch to open **OFF / EXIT**, or **ON / EXIT** while in standby. OFF stops the radio without closing the app; EXIT stops audio and closes the entire application. Opening or dismissing the menu does not change playback. There is no added exit switch on the aluminium fascia. Windows also has its standard title-bar **X** and **Alt+F4**. The Windows title bar uses the normal decorated client area to avoid the known borderless OpenGL rendering/input offset on some legacy Intel/Windows 10 systems. macOS retains its borderless receiver, the same POWER menu and **Cmd+Q**. The Windows executable explicitly declares Per-Monitor V2 DPI awareness with a Per-Monitor fallback in its embedded manifest, following [Microsoft's guidance](https://learn.microsoft.com/en-us/windows/win32/hidpi/setting-the-default-dpi-awareness-for-a-process).
 
@@ -73,7 +73,7 @@ The existing `RadioCrash-Now-Playing-Discogs-VU/now-playing-discogs-vu.js` in th
 - Stream: `https://live.radiocrash.net/` (documented STATS `streampath` is `/`; separately fetched and decoded).
 - JSON: `https://live.radiocrash.net/stats?json=1&sid=1`.
 - Uses `currentsong` or `songtitle`, splitting the first ` - ` and preserving Unicode.
-- Polls every 12 seconds during playback, with a three-second deadline; empty endpoint disables polling and failed/missing metadata clears text.
+- Polls every 12 seconds during playback, with a three-second deadline; failed/missing metadata clears text. The official Radio Crash endpoint is built in.
 - Independently probed AAC-LC / 44.1 kHz / stereo / about 256 kbps. The app detects codec/rate/channels and measures codec payload bitrate, excluding ADTS framing, so about 254 kbps is expected. It displays unknown values until measured.
 
 The HD badge threshold (192 kbps by default) ONLY controls illumination. It never limits bitrate, selects a lower-quality stream or recompresses audio. Playback always decodes the original configured stream at its supplied quality. HD SOUND is a Radio Crash-defined bitrate-threshold badge, not a standardized codec certification. The physical HD Radio emblem between Play and Mute has a soft cold-white/cyan backlight while powered on, with full illumination when that same threshold is met. Its tooltip explains this custom stream-quality meaning; this application does not decode HD Radio/IBOC broadcasts. The desktop player does not control production broadcasting or SAM/PAL.
@@ -125,7 +125,7 @@ Dependencies are pinned in Cargo.lock; resolved licenses/notices are in DEPENDEN
 
 ## Verification and development tools
 
-See VERIFICATION.md for runtime evidence and manual release gates. AAC-LC and MP3 are supported; HE-AAC/SBR, HLS, authenticated streams and ICY metadata-block demultiplexing are outside this version. Requests disable ICY blocks; configure a compatible JSON endpoint for track text. A screenshot or a PCM smoke test is not subjective listening approval or native Windows runtime validation.
+See VERIFICATION.md for runtime evidence and manual release gates. AAC-LC and MP3 are supported; HE-AAC/SBR, HLS, authenticated streams and ICY metadata-block demultiplexing are outside this version. Requests disable ICY blocks; the built-in Radio Crash JSON endpoint supplies track text. A screenshot or a PCM smoke test is not subjective listening approval or native Windows runtime validation.
 
 ```sh
 cargo run -- --smoke 20

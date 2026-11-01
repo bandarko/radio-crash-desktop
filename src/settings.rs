@@ -1,9 +1,17 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+fn radio_stream_url() -> String {
+    "https://live.radiocrash.net/".into()
+}
+fn radio_metadata_url() -> String {
+    "https://live.radiocrash.net/stats?json=1&sid=1".into()
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    #[serde(skip, default = "radio_stream_url")]
     pub stream_url: String,
+    #[serde(skip, default = "radio_metadata_url")]
     pub metadata_url: String,
     pub device: String,
     pub volume: f32,
@@ -23,8 +31,8 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            stream_url: "https://live.radiocrash.net/".into(),
-            metadata_url: "https://live.radiocrash.net/stats?json=1&sid=1".into(),
+            stream_url: radio_stream_url(),
+            metadata_url: radio_metadata_url(),
             device: String::new(),
             volume: 0.5,
             autoplay: false,
@@ -125,6 +133,20 @@ pub fn window_size(width: f32, height: f32, lock: bool) -> [f32; 2] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn legacy_urls_cannot_reroute_the_radio_crash_product() {
+        let settings=Settings::decode(br#"{"stream_url":"http://127.0.0.1/other","metadata_url":"","volume":0.3,"vu_response":"peak"}"#).unwrap();
+        assert_eq!(settings.stream_url, "https://live.radiocrash.net/");
+        assert_eq!(
+            settings.metadata_url,
+            "https://live.radiocrash.net/stats?json=1&sid=1"
+        );
+        assert_eq!(settings.volume, 0.3);
+        assert_eq!(settings.vu_response, crate::dsp::VuResponse::Peak);
+        let saved = serde_json::to_value(&settings).unwrap();
+        assert!(saved.get("stream_url").is_none());
+        assert!(saved.get("metadata_url").is_none());
+    }
     #[test]
     fn old_settings_get_compact_window_defaults() {
         let s: Settings = serde_json::from_str(r#"{"volume":0.35,"hd_kbps":256}"#).unwrap();

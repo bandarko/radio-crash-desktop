@@ -354,10 +354,6 @@ impl RadioApp {
                     ui.label(concat!("Radio Crash Desktop ",env!("CARGO_PKG_VERSION")));
                     ui.separator();
                     ScrollArea::vertical().id_salt("receiver-settings-scroll").max_height((ui.available_height()-164.).max(80.)).show(ui,|ui|{
-                    ui.label("Stream URL");
-                    ui.add(TextEdit::singleline(&mut self.settings.stream_url).desired_width(f32::INFINITY));
-                    ui.label("Now Playing JSON endpoint · empty disables polling");
-                    ui.add(TextEdit::singleline(&mut self.settings.metadata_url).desired_width(f32::INFINITY));
                     ComboBox::from_label("Audio output").selected_text(if self.settings.device.is_empty() { "System default" } else { &self.settings.device }).show_ui(ui, |ui| {
                         ui.selectable_value(&mut self.settings.device, String::new(), "System default");
                         for d in &self.devices { ui.selectable_value(&mut self.settings.device, d.clone(), d); }
@@ -444,12 +440,6 @@ impl RadioApp {
             self.show_settings = false;
         }
         if apply {
-            if !(self.settings.stream_url.starts_with("https://")
-                || self.settings.stream_url.starts_with("http://"))
-            {
-                self.error = "Stream URL must use HTTP or HTTPS".into();
-                return;
-            }
             match self.settings.save() {
                 Ok(()) => {
                     self.error.clear();
