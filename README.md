@@ -25,7 +25,7 @@ A shared logical-point transform positions the fascia and clickable surfaces, in
 
 Left-click the upper-left chassis screw to minimize directly to live L/R tray meters. Its hit area is separate from the chassis drag region. Playback continues while minimized. Right-click the upper chassis → **Minimize to tray · L/R meters** hides the receiver and leaves two animated, PCM-driven L/R meters in the macOS menu bar or Windows notification area. Left-click the meters to restore; right-click for Show Radio Crash / Quit Radio Crash. On macOS, tray-only mode also removes the Dock icon and restores it with the receiver. The optional Settings → Minimize to tray preference applies this behavior to Cmd+M / Ctrl+M and ordinary minimization; otherwise normal Dock/taskbar minimization remains available.
 
-Tray painting runs from `App::logic`, not the main window's paint callback, so meters continue while the receiver is hidden or occluded. The image upload loop caps requests near 30 Hz, skips identical images and follows actual platform background scheduling. A native Mac test observed 49 changed icon uploads during six seconds of hidden playback. The icon uses horizontal L/R rows on macOS and two vertical L/R bars in the square Windows notification icon. Both use the same independent pre-volume RMS and held maximum-RMS data as the receiver. The upper-chassis context menu also provides Settings, Minimize and Quit. Settings include autoplay, start minimized, device selection, VU decay, live LUFS/dBTP measurements, spectrum visibility and quality-badge threshold. Only one skin, VFD Digital - Black Aluminium, is implemented.
+Tray painting runs from `App::logic`, not the main window's paint callback, so meters continue while the receiver is hidden or occluded. The image upload loop caps requests near 30 Hz, skips identical images and follows actual platform background scheduling. A native Mac test observed 49 changed icon uploads during six seconds of hidden playback. The icon uses horizontal L/R rows on macOS and two vertical L/R bars in the square Windows notification icon. Both use the same selected pre-volume detector and matching held-maximum data as the receiver. The upper-chassis context menu also provides Settings, Minimize and Quit. Settings include autoplay, start minimized, device selection, VU response profiles, decay, live LUFS/dBTP measurements, spectrum visibility and quality-badge threshold. Only one skin, VFD Digital - Black Aluminium, is implemented.
 
 ## Display and material rendering
 
@@ -37,9 +37,17 @@ The stereo scale remains **-40 to +18 VU**, with the recommended **Radio Crash H
 
 Settings retains Digital (0 dBFS) and Studio (-18 dBFS), plus a fine VU sensitivity control. The main and tray meters use the same selected reference. The panel caption always shows the actual reference, including custom values. The spectrum reports absolute band RMS dBFS and is unaffected by VU calibration.
 
-The RMS detector continuously integrates PCM energy with a 50 ms time constant, avoiding exaggerated 256-frame loudness jumps while retaining a quick response. At 50 ms, a steady step is within 2 dB of its settled level. Measurements are taken before volume gain from the PCM actually consumed by the output callback.
+Settings > **VU response** selects three genuine PCM detectors without restarting playback:
 
-Peak hold retains the maximum of the same RMS detector as the bars, exactly as in 1.1.5. Within each 256-frame block it preserves the continuously integrated envelope maximum. A new/equal maximum refreshes a two-second hold independently for each channel, then resets to the current RMS envelope without a falling animation. The approved full, zone-colored two-filament segment stays inside each L/R row. Bar and hold share lower-threshold quantization and dark silence. The tray uses this same RMS hold and reference. The relative scale's red segments alone do not mean digital clipping.
+| Profile | Detector | Response |
+|---|---|---|
+| Hi-Fi RMS (smooth) | Continuous 50 ms RMS | The approved 1.1.5 response |
+| Fast RMS (recommended) | Continuous 15 ms RMS | Faster attack and release, same settled calibration |
+| Peak (fast transients) | Sample-peak envelope | Immediate attack; 20 dB decay in 320 ms |
+
+Fresh installations default to Fast RMS with Faster VU decay. Legacy settings retain Hi-Fi RMS when the old faster-decay option was off; an enabled old faster-decay choice migrates to Fast RMS. An explicit profile choice is saved and preserved. Faster VU decay separately selects the graphical falling limit (180 instead of 120 dB/s); it does not increase gain. The Peak profile is a sample-peak instrument, not True Peak or an exact analogue-hardware emulation.
+
+Each profile's peak hold retains the maximum of the SAME detector as its bar, including maxima within 256-frame blocks. A new/equal maximum refreshes a two-second hold independently for each channel, then resets to the current detector envelope without an invented falling animation. The approved full, zone-colored two-filament segment stays inside each L/R row. Main and tray select the same detector, hold and reference. Bar and hold share lower-threshold quantization and dark silence. Red segments on the relative scale alone do not mean digital clipping. Measurements use PCM consumed by the audio callback, before volume; profile changes do not change the actual sound.
 
 **True Peak** is a separate advanced measurement, not the front-panel hold. `ebur128` 0.1.11 estimates reconstructed peaks with 4x oversampling below 96 kHz and 2x below 192 kHz; higher rates retain sample peaks. Its independent two-second memory is shown only as an absolute dBTP value in Settings. A True Peak value may legitimately be much higher than RMS; moving it artificially closer would misrepresent the measurement.
 
@@ -74,7 +82,7 @@ HD SOUND is a Radio Crash-defined bitrate-threshold badge, not a standardized co
 
 - `audio`: cancellable HTTP worker → bounded compressed channel → Symphonia decoder → native-rate or sinc-converted PCM → lock-free one-second queue → CPAL output. Same consumed pre-gain frames feed a separate lock-free analysis tap. The output callback performs no network access, FFT, allocation or mutex acquisition.
 - `audio_resample`: native sample rate preferred; fallback is 64-tap, 1024-phase normalized Blackman-windowed sinc with anti-alias filtering. Gain ramps smoothly and output clamps safely. Mono duplicates into stereo; extra device channels receive silence. Sources beyond mono/stereo are rejected.
-- `dsp`: independent continuous L/R RMS, oversampled True Peak, bounded momentary/short-term LUFS and audio-clock peak hold, overlapping Hann-window FFT, relative VU reference mapping and time-based display decay.
+- `dsp`: three selectable L/R detector profiles, oversampled True Peak, bounded momentary/short-term LUFS and audio-clock peak hold, overlapping Hann-window FFT, relative VU reference mapping and time-based display decay.
 - `metadata`: documented JSON parsing and Unicode-preserving titles.
 - `ui`, `skins`: native controls, live painting over photographic materials, resizing, optional native renderer captures, one skin.
 - `settings`: serde JSON in the platform configuration directory, including dimensions and aspect preference; size changes are saved after a brief idle period. Existing configs migrate to compact defaults. Windows file replacement uses a short remove/rename interval.

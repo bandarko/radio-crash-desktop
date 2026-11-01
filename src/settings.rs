@@ -12,6 +12,7 @@ pub struct Settings {
     pub minimize_to_tray: bool,
     pub spectrum: bool,
     pub fast_vu: bool,
+    pub vu_response: crate::dsp::VuResponse,
     pub vu_reference_dbfs: f32,
     pub vu_calibration_version: u8,
     pub auto_updates: bool,
@@ -31,7 +32,8 @@ impl Default for Settings {
             start_minimized: false,
             minimize_to_tray: false,
             spectrum: true,
-            fast_vu: false,
+            fast_vu: true,
+            vu_response: crate::dsp::VuResponse::FastRms,
             vu_reference_dbfs: crate::dsp::VU_REFERENCE_DBFS,
             vu_calibration_version: 1,
             auto_updates: true,
@@ -76,7 +78,16 @@ impl Settings {
     fn decode(bytes: &[u8]) -> Option<Self> {
         let value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
         let old_calibration = value["vu_calibration_version"].as_u64().unwrap_or(0) < 1;
+        let legacy_response = value.get("vu_response").is_none();
+        let legacy_fast = value["fast_vu"].as_bool().unwrap_or(false);
         let mut s: Self = serde_json::from_value(value).ok()?;
+        if legacy_response {
+            s.vu_response = if legacy_fast {
+                crate::dsp::VuResponse::FastRms
+            } else {
+                crate::dsp::VuResponse::SmoothRms
+            };
+        }
         // One-time correction of 1.1.0's default digital profile. Once saved,
         // an explicit choice of Digital remains Digital on later launches.
         if old_calibration && s.vu_reference_dbfs == 0. {
@@ -130,12 +141,33 @@ mod tests {
         )
         .unwrap();
         assert!(upgraded.fast_vu);
+        assert_eq!(upgraded.vu_response, crate::dsp::VuResponse::FastRms);
         assert_eq!(upgraded.vu_reference_dbfs, -13.);
         let classic = Settings::decode(br#"{"fast_vu":true,"vu_reference_dbfs":-18}"#).unwrap();
         let saved = serde_json::to_vec(&classic).unwrap();
         let restored = Settings::decode(&saved).unwrap();
         assert!(restored.fast_vu);
         assert_eq!(restored.vu_reference_dbfs, -18.);
+    }
+    #[test]
+    fn response_profiles_persist_and_migrate_legacy_decay_choices() {
+        use crate::dsp::VuResponse;
+        assert_eq!(Settings::default().vu_response, VuResponse::FastRms);
+        let smooth = Settings::decode(br#"{"fast_vu":false,"volume":0.3}"#).unwrap();
+        assert_eq!(smooth.vu_response, VuResponse::SmoothRms);
+        for response in [VuResponse::SmoothRms, VuResponse::FastRms, VuResponse::Peak] {
+            let selected = Settings {
+                vu_response: response,
+                ..smooth.clone()
+            };
+            let restored = Settings::decode(&serde_json::to_vec(&selected).unwrap()).unwrap();
+            assert_eq!(restored.vu_response, response);
+            assert_eq!(restored.volume, 0.3);
+            assert!(!restored.fast_vu);
+        }
+        let future = Settings::decode(br#"{"vu_response":"future","volume":0.3}"#).unwrap();
+        assert_eq!(future.vu_response, VuResponse::FastRms);
+        assert_eq!(future.volume, 0.3);
     }
     #[test]
     fn hifi_migration_is_once_and_preserves_explicit_profiles() {

@@ -4,12 +4,45 @@ pub const BANDS: [f32; 10] = [
     32., 64., 125., 250., 500., 1000., 2000., 4000., 8000., 16000.,
 ];
 pub const N: usize = 4096;
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VuResponse {
+    SmoothRms,
+    Peak,
+    #[default]
+    #[serde(other)]
+    FastRms,
+}
+impl VuResponse {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::SmoothRms => "Hi-Fi RMS (smooth)",
+            Self::FastRms => "Fast RMS (recommended)",
+            Self::Peak => "Peak (fast transients)",
+        }
+    }
+}
+#[derive(Clone, Copy)]
+pub struct VuReading {
+    pub level: [f32; 2],
+    pub held: [f32; 2],
+}
+impl Default for VuReading {
+    fn default() -> Self {
+        Self {
+            level: [-60.; 2],
+            held: [-60.; 2],
+        }
+    }
+}
 #[derive(Clone)]
 pub struct Meters {
     pub rms: [f32; 2],
     pub peaks: [f32; 2],
     pub held_peaks: [f32; 2],
     pub held_rms: [f32; 2],
+    pub fast_rms: VuReading,
+    pub peak_meter: VuReading,
     pub true_peaks: Option<[f32; 2]>,
     pub momentary_lufs: Option<f64>,
     pub short_term_lufs: Option<f64>,
@@ -23,11 +56,25 @@ impl Default for Meters {
             peaks: [-60.; 2],
             held_peaks: [-60.; 2],
             held_rms: [-60.; 2],
+            fast_rms: VuReading::default(),
+            peak_meter: VuReading::default(),
             true_peaks: None,
             momentary_lufs: None,
             short_term_lufs: None,
             spectrum: [-60.; 10],
             available: [false; 10],
+        }
+    }
+}
+impl Meters {
+    pub fn vu(&self, response: VuResponse) -> VuReading {
+        match response {
+            VuResponse::SmoothRms => VuReading {
+                level: self.rms,
+                held: self.held_rms,
+            },
+            VuResponse::FastRms => self.fast_rms,
+            VuResponse::Peak => self.peak_meter,
         }
     }
 }
@@ -103,9 +150,12 @@ pub struct RmsMeter {
 }
 impl RmsMeter {
     pub fn new(rate: u32) -> Self {
+        Self::with_time_constant(rate, 0.05)
+    }
+    pub fn with_time_constant(rate: u32, seconds: f64) -> Self {
         Self {
             energy: [0.; 2],
-            alpha: 1. - (-1. / (rate.max(1) as f64 * 0.05)).exp(),
+            alpha: 1. - (-1. / (rate.max(1) as f64 * seconds)).exp(),
         }
     }
     pub fn observe(&mut self, frames: &[[f32; 2]]) -> LevelBlock {
@@ -123,6 +173,37 @@ impl RmsMeter {
             rms: self.energy.map(|v| db(v.max(0.).sqrt() as f32)),
             max_rms: maximum.map(|v| db(v.max(0.).sqrt() as f32)),
             sample_peaks: sample_peaks.map(db),
+        }
+    }
+}
+
+/// Sample-peak envelope: immediate attack and 20 dB / 320 ms release.
+/// Sample-clock processing preserves impulses and is independent of chunks.
+/// This is a peak-reading option, not a True Peak or hardware-emulation claim.
+pub struct PeakMeter {
+    amplitude: [f64; 2],
+    release: f64,
+}
+impl PeakMeter {
+    pub fn new(rate: u32) -> Self {
+        Self {
+            amplitude: [0.; 2],
+            release: 10f64.powf(-62.5 / (20. * rate.max(1) as f64)),
+        }
+    }
+    pub fn observe(&mut self, frames: &[[f32; 2]]) -> VuReading {
+        let mut maximum = self.amplitude;
+        for frame in frames {
+            for c in 0..2 {
+                self.amplitude[c] = (frame[c] as f64)
+                    .abs()
+                    .max(self.amplitude[c] * self.release);
+                maximum[c] = maximum[c].max(self.amplitude[c]);
+            }
+        }
+        VuReading {
+            level: self.amplitude.map(|v| db(v as f32)),
+            held: maximum.map(|v| db(v as f32)),
         }
     }
 }
@@ -288,6 +369,84 @@ impl Analyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fast_rms_changes_response_without_changing_calibration() {
+        let mut slow = RmsMeter::new(48000);
+        let mut fast = RmsMeter::with_time_constant(48000, 0.015);
+        let step = [[0.5, 0.]; 720];
+        let short_slow = slow.observe(&step);
+        let short_fast = fast.observe(&step);
+        assert!((short_fast.rms[0] + 8.012).abs() < 0.02);
+        assert!(short_fast.rms[0] > short_slow.rms[0] + 3.);
+        let steady = [[0.5, 0.]; 24000];
+        let settled_slow = slow.observe(&steady).rms;
+        let settled_fast = fast.observe(&steady).rms;
+        assert!((settled_slow[0] - settled_fast[0]).abs() < 0.001);
+        assert_eq!(settled_fast[1], -60.);
+        let falling_fast = fast.observe(&[[0.; 2]; 720]).rms[0];
+        let falling_slow = slow.observe(&[[0.; 2]; 720]).rms[0];
+        assert!(falling_slow > falling_fast + 3.);
+    }
+    #[test]
+    fn peak_profile_preserves_impulses_and_has_sample_clock_release() {
+        for rate in [32000, 44100, 48000, 96000, 192000] {
+            let mut peak = PeakMeter::new(rate);
+            let hit = peak.observe(&[[0.5, 0.]]);
+            assert!((hit.level[0] + 6.0206).abs() < 0.001);
+            assert_eq!(hit.held, hit.level);
+            let decayed = peak.observe(&vec![[0.; 2]; (rate as f64 * 0.32) as usize]);
+            assert!((decayed.level[0] + 26.0206).abs() < 0.01, "rate {rate}");
+            assert_eq!(decayed.level[1], -60.);
+        }
+        let input = tone(48000, 1000., 0.5, 4800);
+        let mut whole = PeakMeter::new(48000);
+        let expected = whole.observe(&input);
+        let mut split = PeakMeter::new(48000);
+        let mut maximum = [-60f32; 2];
+        for part in input.chunks(17) {
+            let part = split.observe(part);
+            for (max, value) in maximum.iter_mut().zip(part.held) {
+                *max = max.max(value);
+            }
+        }
+        assert_eq!(expected.level, split.observe(&[]).level);
+        assert_eq!(expected.held, maximum);
+    }
+    #[test]
+    fn each_profile_selects_its_own_matching_bar_and_hold() {
+        let meters = Meters {
+            rms: [-20., -21.],
+            held_rms: [-15., -16.],
+            fast_rms: VuReading {
+                level: [-18., -19.],
+                held: [-12., -13.],
+            },
+            peak_meter: VuReading {
+                level: [-5., -6.],
+                held: [-1., -2.],
+            },
+            held_peaks: [3., 4.],
+            ..Default::default()
+        };
+        for (profile, level, held) in [
+            (VuResponse::SmoothRms, meters.rms, meters.held_rms),
+            (
+                VuResponse::FastRms,
+                meters.fast_rms.level,
+                meters.fast_rms.held,
+            ),
+            (
+                VuResponse::Peak,
+                meters.peak_meter.level,
+                meters.peak_meter.held,
+            ),
+        ] {
+            let selected = meters.vu(profile);
+            assert_eq!(selected.level, level);
+            assert_eq!(selected.held, held);
+            assert_ne!(selected.held, meters.held_peaks);
+        }
+    }
     fn tone(rate: u32, frequency: f64, amplitude: f64, count: usize) -> Vec<[f32; 2]> {
         (0..count)
             .map(|i| {

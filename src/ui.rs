@@ -387,6 +387,11 @@ impl RadioApp {
                     ui.small("Drag the right/bottom edge or lower-right corner to resize. Size is remembered.");
                     ui.separator();
                     ui.label("Skin: VFD Digital - Black Aluminium");
+                    ComboBox::from_label("VU response").selected_text(self.settings.vu_response.label()).show_ui(ui, |ui| {
+                        for response in [crate::dsp::VuResponse::SmoothRms, crate::dsp::VuResponse::FastRms, crate::dsp::VuResponse::Peak] {
+                            ui.selectable_value(&mut self.settings.vu_response, response, response.label());
+                        }
+                    });
                     ui.checkbox(&mut self.settings.fast_vu,"Faster VU decay");
                     ComboBox::from_label("VU calibration").selected_text(match self.settings.vu_reference_dbfs {0.=>"Digital: 0 dBFS".to_owned(),-15.=>"Radio Crash Hi-Fi: -15 dBFS".to_owned(),-18.=>"Studio: -18 dBFS".to_owned(),other=>format!("Custom: {other} dBFS")}).show_ui(ui,|ui|{
                         ui.selectable_value(&mut self.settings.vu_reference_dbfs,-15.,"Radio Crash Hi-Fi (recommended)");
@@ -395,7 +400,12 @@ impl RadioApp {
                     });
                     let mut sensitivity=-self.settings.vu_reference_dbfs;
                     if ui.add(Slider::new(&mut sensitivity,0.0..=24.0).step_by(0.5).text("VU sensitivity · dB")).changed(){self.settings.vu_reference_dbfs = -sensitivity;}
-                    ui.small("RMS bars show musical energy. Peak hold remembers the highest level of the same RMS bar for 2 seconds.\nThe scale is relative to the selected reference; red segments alone do not mean clipping.");
+                    ui.small(match self.settings.vu_response {
+                        crate::dsp::VuResponse::SmoothRms => "Hi-Fi RMS: the smooth response from 1.1.5.",
+                        crate::dsp::VuResponse::FastRms => "Fast RMS: quicker response to rhythm, without changing meter gain.",
+                        crate::dsp::VuResponse::Peak => "Peak: immediate response to short sample peaks, with controlled decay.",
+                    });
+                    ui.small("Peak hold remembers the highest level of the SAME selected detector for 2 seconds.\nThe scale is relative to the selected reference; red segments alone do not mean clipping.");
                     CollapsingHeader::new("Live signal measurements").show(ui, |ui| {
                         let snap = self.engine.state.lock().unwrap().clone();
                         let m = &snap.meters;
@@ -532,6 +542,7 @@ impl eframe::App for RadioApp {
                 self.engine.running(),
                 self.settings.vu_reference_dbfs,
                 self.settings.fast_vu,
+                self.settings.vu_response,
             );
             tray.poll()
         } else {
@@ -618,7 +629,7 @@ impl eframe::App for RadioApp {
         }
         for c in 0..2 {
             let target = if self.engine.running() {
-                snap.meters.rms[c]
+                snap.meters.vu(self.settings.vu_response).level[c]
             } else {
                 -60.
             };
@@ -769,13 +780,13 @@ impl eframe::App for RadioApp {
             let level =
                 crate::dsp::vu_segment_index(self.meters.rms[c], self.settings.vu_reference_dbfs);
             let held = crate::dsp::vu_segment_index(
-                snap.meters.held_rms[c],
+                snap.meters.vu(self.settings.vu_response).held[c],
                 self.settings.vu_reference_dbfs,
             );
             for (i, db) in crate::dsp::VU_SCALE.iter().enumerate() {
                 let x = 98. + i as f32 * 8.;
                 // Keep the approved full, zone-colored filament in the L/R
-                // row. This is the maximum of the SAME RMS detector as the bar.
+                // row. Hold is the maximum of the SAME selected detector.
                 let on = level.is_some_and(|last| i <= last) || held == Some(i);
                 for row in 0..2 {
                     segment_with_color(
@@ -787,7 +798,17 @@ impl eframe::App for RadioApp {
                 }
             }
         }
-        text(&p, pt(99., 257.), "RMS", 7.8 * scale, DIM);
+        text(
+            &p,
+            pt(99., 257.),
+            match self.settings.vu_response {
+                crate::dsp::VuResponse::SmoothRms => "RMS",
+                crate::dsp::VuResponse::FastRms => "FAST RMS",
+                crate::dsp::VuResponse::Peak => "PEAK",
+            },
+            7.8 * scale,
+            DIM,
+        );
         let calibration = if self.settings.vu_reference_dbfs == 0. {
             "DIGITAL dBFS".to_owned()
         } else {

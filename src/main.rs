@@ -33,13 +33,18 @@ fn main() -> anyhow::Result<()> {
             std::thread::sleep(std::time::Duration::from_secs(1));
             let s = engine.state.lock().unwrap();
             println!(
-                "{} {} {:?} {} Hz {} ch | RMS {:?} | TP HOLD {:?} | TRUE PEAK {:?} | SAMPLE PEAK {:?} | LUFS M {:?} S {:?} | FFT {:?} | {} / {} | {}",
+                "{} {} {:?} {} Hz {} ch | RMS {:?} | RMS HOLD {:?} | FAST RMS {:?} HOLD {:?} | PEAK METER {:?} HOLD {:?} | TP HOLD {:?} | TRUE PEAK {:?} | SAMPLE PEAK {:?} | LUFS M {:?} S {:?} | FFT {:?} | {} / {} | {}",
                 s.status,
                 s.codec,
                 s.bitrate,
                 s.rate,
                 s.channels,
                 s.meters.rms,
+                s.meters.held_rms,
+                s.meters.fast_rms.level,
+                s.meters.fast_rms.held,
+                s.meters.peak_meter.level,
+                s.meters.peak_meter.held,
                 s.meters.held_peaks,
                 s.meters.true_peaks,
                 s.meters.peaks,

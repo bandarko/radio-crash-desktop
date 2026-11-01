@@ -292,7 +292,11 @@ fn session(
         let mut vu = [[0.; 2]; 256];
         let mut vu_index = 0;
         let mut rms_meter = crate::dsp::RmsMeter::new(output_rate);
+        let mut fast_rms_meter = crate::dsp::RmsMeter::with_time_constant(output_rate, 0.015);
+        let mut peak_meter = crate::dsp::PeakMeter::new(output_rate);
         let mut peak_hold = crate::dsp::PeakHold::new();
+        let mut fast_hold = crate::dsp::PeakHold::new();
+        let mut envelope_hold = crate::dsp::PeakHold::new();
         let mut broadcast = crate::dsp::BroadcastMeter::new(output_rate)
             .map_err(|e| log::warn!("Broadcast meter unavailable: {e}"))
             .ok();
@@ -303,11 +307,22 @@ fn session(
                 vu_index += 1;
                 if vu_index == vu.len() {
                     let measured = rms_meter.observe(&vu);
+                    let fast = fast_rms_meter.observe(&vu);
+                    let peak = peak_meter.observe(&vu);
                     analyzed_frames += vu.len() as u64;
+                    let seconds = analyzed_frames as f64 / output_rate as f64;
                     let held = peak_hold.observe(
                         measured.max_rms,
                         analyzed_frames as f64 / output_rate as f64,
                     );
+                    let fast = crate::dsp::VuReading {
+                        level: fast.rms,
+                        held: fast_hold.observe(fast.max_rms, seconds),
+                    };
+                    let peak = crate::dsp::VuReading {
+                        level: peak.level,
+                        held: envelope_hold.observe(peak.held, seconds),
+                    };
                     let quality = match broadcast.as_mut().map(|meter| meter.observe(&vu)) {
                         Some(Ok(measured)) => Some(measured),
                         Some(Err(e)) => {
@@ -319,6 +334,8 @@ fn session(
                     };
                     let mut snapshot = st.lock().unwrap();
                     snapshot.meters.held_rms = held;
+                    snapshot.meters.fast_rms = fast;
+                    snapshot.meters.peak_meter = peak;
                     snapshot.meters.rms = measured.rms;
                     snapshot.meters.peaks = measured.sample_peaks;
                     if let Some(quality) = quality {

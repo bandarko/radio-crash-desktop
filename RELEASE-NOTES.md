@@ -2,15 +2,15 @@
 
 1. studenoga 2026.
 
-- Dodana su napredna mjerenja True Peak i LUFS iz stvarnog PCM-a koji se reproducira. True Peak procjenjuje i vrhove između digitalnih uzoraka.
-- Settings > Live signal measurements prikazuje momentary (400 ms) i short-term (3 s) LUFS te zasebno zadržane L/R True Peak vrijednosti u dBTP. Vrijednosti čekaju puni mjerni prozor, a tišina se prikazuje kao nedostupna.
-- Glavni instrument i tray zadržavaju odobreni RMS peak hold iz 1.1.5: maksimum iste RMS trake, dvije sekunde zadržavanja i puni svjetleći segment u samom L/R retku s bojom svoje zone. Nema pokazivača ni tanke oznake iznad traka.
-- Tray sada poštuje i odabrani Faster VU decay. Sačuvani su VU osjetljivost, glasnoća, FFT, HD Radio iluminator i izgled receivera.
-- Nema normalizacije ni kompresije zvuka. Relativne crvene oznake na Hi-Fi skali nisu same po sebi dokaz digitalnog clippinga; apsolutni dBTP nalazi se u naprednim mjerenjima.
+- Settings > VU response sada nudi tri stvarna odziva: Hi-Fi RMS (kao u 1.1.5), Fast RMS (življi odziv) i Peak (kratki vrhovi). Izbor se pamti i odmah vrijedi za glavni instrument i tray, bez prekida reprodukcije.
+- Fast RMS mijenja i vrijeme samog mjerenja, s 50 na 15 ms, uz istu kalibraciju za stalni signal. Novi korisnici dobivaju preporučeni Fast RMS. Postojeće postavke čuvaju mirniji profil ako brži odziv nije bio uključen.
+- Peak hold u svakom profilu pamti maksimum ISTOG detektora kao njegova traka, dvije sekunde. Ostaje puni svjetleći segment u L/R retku s bojom svoje zone, bez pokazivača ili tanke oznake iznad traka.
+- Settings > Live signal measurements odvojeno prikazuje oversampled True Peak u dBTP te momentary (400 ms) i short-term (3 s) LUFS. Vrijednosti čekaju puni prozor mjerenja; tišina se prikazuje kao nedostupna.
+- Tray poštuje i Faster VU decay. Sačuvani su VU osjetljivost, glasnoća, FFT, HD Radio iluminator i izgled receivera. Nema normalizacije, kompresije ili umjetnog pojačavanja prikaza.
 
 ## English
 
-Advanced signal measurements now show independent oversampled True Peak in dBTP plus momentary (400 ms) and short-term (3 s) LUFS. Analysis uses consumed pre-volume PCM on the existing worker, with bounded history, complete-window warm-up and graceful silence handling. The main receiver and tray retain the approved 1.1.5 RMS hold: the maximum of the same envelope as the bar, independent two-second hold, and full zone-colored in-row filament shape. True Peak is intentionally confined to advanced measurements. The tray now respects Faster VU decay. No output gain, normalization, compression, RMS calibration, FFT or fascia change is made. This is not a certified broadcast meter or exact analogue-meter emulation.
+Three persistent VU response profiles now select genuine consumed-PCM detectors on both the receiver and tray: the original 50 ms Hi-Fi RMS, recommended 15 ms Fast RMS, and an instantaneous sample-peak envelope with controlled 20 dB / 320 ms release. Every profile holds the maximum of its own detector for two seconds, retaining the approved full zone-colored in-row filament. Selecting a profile does not restart playback or change gain. Separate advanced measurements show oversampled True Peak in dBTP and bounded momentary/short-term LUFS, with complete-window warm-up and silence handling. True Peak does not drive an RMS bar's front-panel hold. No normalization, compression, spectrum calibration or fascia change is made. This is not a certified meter or exact analogue hardware emulation.
 
 Packaging and platform validation are recorded in the release manifest. Windows hardware playback remains manually unverified; Windows downloads are not Authenticode-signed.
 

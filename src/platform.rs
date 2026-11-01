@@ -118,24 +118,32 @@ impl Tray {
             self.update_label = label;
         }
     }
-    pub fn update(&mut self, meters: &Meters, running: bool, reference: f32, fast_vu: bool) {
+    pub fn update(
+        &mut self,
+        meters: &Meters,
+        running: bool,
+        reference: f32,
+        fast_vu: bool,
+        response: crate::dsp::VuResponse,
+    ) {
         let elapsed = self.last.elapsed();
         if elapsed < Duration::from_millis(30) {
             return;
         }
         self.last = Instant::now();
         self.ticks += 1;
+        let selected = meters.vu(response);
         for c in 0..2 {
             self.levels[c] = crate::dsp::follow(
                 self.levels[c],
-                if running { meters.rms[c] } else { -60. },
+                if running { selected.level[c] } else { -60. },
                 elapsed.as_secs_f32(),
                 if fast_vu { 180. } else { 120. },
             );
         }
         let frame = Frame::render_calibrated(
             self.levels,
-            if running { meters.held_rms } else { [-60.; 2] },
+            if running { selected.held } else { [-60.; 2] },
             Self::layout(),
             reference,
         );

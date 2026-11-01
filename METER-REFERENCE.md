@@ -18,9 +18,13 @@ Version 1.1.5 holds the maximum of the continuously integrated RMS envelope, inc
 
 Raw sample peaks remain separately available in smoke diagnostics. They are not used to move the RMS hold marker. The result reproduces the documented hold/reset principle while preserving Radio Crash's RMS instrument; it does not claim a component-level or metrological emulation of the entire original peak meter. No dbx, tape, calibration oscillator or third-party model controls are added.
 
-## Version 1.2.0 advanced measurements, approved RMS front panel
+## Version 1.2.0 selectable front-panel response and advanced measurements
 
-The main instrument and tray retain the 1.1.5 RMS hold. The front panel keeps the same 50 ms RMS bars, maximum-RMS two-second hold, full in-row two-filament segment, zone colors, lower-threshold quantization and PEAK HOLD caption. There is no external pointer, dot or thin lane above the bar. No detector gain or artificial peak target is used.
+Settings > VU response selects Hi-Fi RMS (50 ms, the 1.1.5 detector), Fast RMS (15 ms, recommended) or Peak (instant sample-peak attack, 62.5 dB/s release). Both RMS profiles have the same settled calibration; their timing differs. The peak profile shows short sample peaks and naturally reads higher than RMS on transient material. It does not claim True Peak or exact RS-B100 emulation; only its 20 dB / 320 ms release follows the cited historical measurement.
+
+Every profile uses its OWN detector maximum for two-second hold, independently for L/R. All profiles retain the approved full in-row two-filament segment, zone colors, lower-threshold quantization and PEAK HOLD caption. There is no external pointer, dot, thin upper lane, adaptive gain or artificial peak target. All profiles are continuously analyzed off the audio callback, so selecting a different profile immediately changes the main/tray instruments without reconnecting or resetting playback. The old faster-decay setting remains a separate graphical fall limit; Fast RMS changes the underlying detector time constant as well.
+
+Fresh defaults use Fast RMS and faster graphical decay. Legacy configurations migrate enabled faster decay to Fast RMS, otherwise keep Hi-Fi RMS; explicit profile choices persist. The footer identifies RMS, FAST RMS or PEAK. True Peak is never used as the front-panel hold of an RMS bar.
 
 True Peak and momentary/short-term LUFS are independent measurements in Settings > Live signal measurements. They use the pure-Rust [ebur128 0.1.11 implementation](https://docs.rs/ebur128/0.1.11/ebur128/), a port of libebur128. Its authors document EBU TECH 3341/3342 tests; this product does not claim independent certification. See [ITU-R BS.1770](https://www.itu.int/rec/R-REC-BS.1770-5-202311-I/en) and [EBU loudness specifications](https://tech.ebu.ch/loudness/). The crate oversamples 4x below 96 kHz, 2x below 192 kHz and uses native samples above that. The stream is analyzed at the output-device rate after resampling, before volume; device-rate changes reconnect and reset the meter state.
 

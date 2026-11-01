@@ -5,7 +5,7 @@
 <key>CFBundleIdentifier</key><string>net.radiocrash.desktop</string>
 <key>CFBundleName</key><string>Radio Crash Desktop</string>
 <key>CFBundleDisplayName</key><string>Radio Crash Desktop</string>
-<key>CFBundleVersion</key><string>122</string>
+<key>CFBundleVersion</key><string>123</string>
 <key>CFBundleShortVersionString</key><string>1.2.0</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleSupportedPlatforms</key><array><string>MacOSX</string></array>
