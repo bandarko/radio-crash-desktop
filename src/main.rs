@@ -33,13 +33,15 @@ fn main() -> anyhow::Result<()> {
             std::thread::sleep(std::time::Duration::from_secs(1));
             let s = engine.state.lock().unwrap();
             println!(
-                "{} {} {:?} {} Hz {} ch | RMS {:?} | FFT {:?} | {} / {} | {}",
+                "{} {} {:?} {} Hz {} ch | RMS {:?} | HOLD {:?} | SAMPLE PEAK {:?} | FFT {:?} | {} / {} | {}",
                 s.status,
                 s.codec,
                 s.bitrate,
                 s.rate,
                 s.channels,
                 s.meters.rms,
+                s.meters.held_peaks,
+                s.meters.peaks,
                 s.meters.spectrum,
                 s.artist,
                 s.title,

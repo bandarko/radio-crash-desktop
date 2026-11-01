@@ -1,3 +1,12 @@
+# Verification - 1.1.5 maximum-VU hold
+
+- Deterministic PCM tests preserve maximum RMS-envelope values within a block while keeping raw sample peaks separate. Chunked and whole-block processing yield the same maximum and final RMS.
+- Hold tests verify the two-second boundary, immediate reset without a falling ramp, equal-peak refresh and independent L/R deadlines when only one channel receives a higher peak.
+- All meter threshold midpoints latch the same segment the bar can actually light. Tray image pixels are checked for aligned bar/hold endpoints in both layouts, across three references. Detector-floor silence produces no phantom segments at the highest sensitivity.
+- RMS integration, gain, decoder and FFT are unchanged. Live smoke output separately reports RMS, HOLD and SAMPLE PEAK for verification against actual consumed PCM.
+- Original manufacturer instructions specify about two seconds and automatic reset. A contemporary hardware measurement also distinguishes its fast finite-response peak meter from a true instantaneous peak detector. See METER-REFERENCE.md. This implementation deliberately retains the approved RMS VU profile.
+- Native capture, signing/notarization, ZIP roundtrip and all three native CI targets are recorded in the release manifest. Physical Windows runtime remains separately unverified.
+
 # Verification - 1.1.4 POWER menu contrast
 
 - The root cause was a custom dark popup frame combined with foreground colors inherited from a light system theme. The popup now scopes its own dark visuals and explicit bright foreground, independently of settings-window/system colors.

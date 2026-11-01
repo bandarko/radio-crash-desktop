@@ -299,14 +299,16 @@ fn session(
                 vu[vu_index] = f;
                 vu_index += 1;
                 if vu_index == vu.len() {
-                    let (rms, peaks) = rms_meter.observe(&vu);
+                    let measured = rms_meter.observe(&vu);
                     analyzed_frames += vu.len() as u64;
-                    let held =
-                        peak_hold.observe(peaks, analyzed_frames as f64 / output_rate as f64);
+                    let held = peak_hold.observe(
+                        measured.max_rms,
+                        analyzed_frames as f64 / output_rate as f64,
+                    );
                     let mut snapshot = st.lock().unwrap();
                     snapshot.meters.held_peaks = held;
-                    snapshot.meters.rms = rms;
-                    snapshot.meters.peaks = peaks;
+                    snapshot.meters.rms = measured.rms;
+                    snapshot.meters.peaks = measured.sample_peaks;
                     vu_index = 0;
                 }
                 block.push(f);

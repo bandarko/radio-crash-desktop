@@ -1,6 +1,6 @@
 # Radio Crash Desktop - Windows x64
 
-Verzija 1.1.4 · Namijenjeno za Windows 10/11, 64-bitni x64 sustav.
+Verzija 1.1.5 · Namijenjeno za Windows 10/11, 64-bitni x64 sustav.
 
 1. Raspakirajte cijeli ZIP u vlastitu mapu, primjerice Documents/Radio Crash Desktop.
 2. Pokrenite **RadioCrashDesktop.exe** i pritisnite Power ili Play.
@@ -11,7 +11,7 @@ Ovo izdanje nije Authenticode potpisano. Windows može prikazati upozorenje o ne
 
 Kliknite postojeći **POWER** gumb: **OFF** zaustavlja radio i ostavlja aplikaciju otvorenom, a **EXIT** potpuno zatvara aplikaciju. U standby stanju isti izbornik nudi **ON / EXIT**. Možete izaći i klikom na **X** u Windows naslovnoj traci ili tipkama **Alt+F4**. Minimiziranje ostavlja radio aktivnim.
 
-Windows naslovna traka je uključena radi kompatibilnosti sa starijim Intel grafičkim sustavima, na kojima prikaz prozora bez okvira može biti pomaknut u odnosu na miš. Verzija 1.1.4 također uključuje manifest za Per-Monitor V2 DPI i veće klik površine na gumbima. Ručna potvrda na prijavljenom HP-u još je potrebna.
+Windows naslovna traka je uključena radi kompatibilnosti sa starijim Intel grafičkim sustavima, na kojima prikaz prozora bez okvira može biti pomaknut u odnosu na miš. Verzija 1.1.5 također uključuje manifest za Per-Monitor V2 DPI i veće klik površine na gumbima. Ručna potvrda na prijavljenom HP-u još je potrebna.
 
 Za minimiziranje kliknite desnom tipkom na gornji dio kućišta i odaberite **Minimize to tray · L/R meters**. Klik na L/R instrumente u notification area vraća prozor; Windows ih može smjestiti u izbornik skrivenih ikona. Ctrl+M standardno minimizira u taskbar; Settings → Minimize to tray uključuje minimiziranje u tray.
 

@@ -1,3 +1,21 @@
+# Radio Crash Desktop 1.1.5
+
+1. studenoga 2026.
+
+- Peak hold sada zadržava najveći nivo istog RMS detektora koji pokreće VU trake. Sirovi sample peak ostaje odvojena dijagnostička vrijednost.
+- Zadržavanje traje oko dvije sekunde od novog/jednakog maksimuma, neovisno za L i R. Nakon isteka oznaka se automatski postavlja na trenutačni nivo, bez prethodnog sporog klizanja.
+- Oznaka je svijetleći segment u samom retku instrumenta i koristi boju svoje zone. Uklonjeni su odvojena točka i vertikalna crta iznad trake.
+- Traka i zadržani segment koriste isti prag, bez zaokruživanja u viši segment. Usklađene su i male tray oznake; tišina ostaje ugašena pri svim osjetljivostima.
+- Kalibracija 0 VU = -15 dBFS, 50 ms RMS odziv, glasnoća i FFT ostaju isti. Ovo usklađuje princip peak-holda, a ne pretvara RMS VU u kopiju cijelog analognog peak-metra.
+
+Usporedba izvora nalazi se u `METER-REFERENCE.md` u izvornom repozitoriju. Mac paket potpisan je i notariziran; Windows EXE ostaje nepotpisan i njegov rad na fizičkom računalu nije ručno provjeren u ovoj provjeri.
+
+## English
+
+Peak hold now captures the maximum of the same continuous RMS envelope as the VU bar, preserving sub-frame envelope maxima. Each channel holds a new/equal maximum for two seconds and then automatically resets to its current level. The marker is an in-row, zone-colored filament segment. Bar/hold thresholds and compact tray quantization are aligned, including silence at maximum sensitivity. Raw sample peaks remain diagnostics. Audio gain, the -15 dBFS reference, 50 ms RMS response and FFT are unchanged. The app keeps its RMS VU identity rather than claiming a complete emulation of an analogue peak-reading meter.
+
+---
+
 # Radio Crash Desktop 1.1.4
 
 1. studenoga 2026.

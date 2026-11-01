@@ -395,7 +395,7 @@ impl RadioApp {
                     });
                     let mut sensitivity=-self.settings.vu_reference_dbfs;
                     if ui.add(Slider::new(&mut sensitivity,0.0..=24.0).step_by(0.5).text("VU sensitivity · dB")).changed(){self.settings.vu_reference_dbfs = -sensitivity;}
-                    ui.small("Meter display only; audio volume is unchanged. Main and tray meters use the same calibration.");
+                    ui.small("Meter display only; audio volume is unchanged. Main and tray meters use the same calibration.\nPeak hold: highest VU level, 2 seconds, automatic reset.");
                     ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
                     ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD SOUND threshold · kbps"));
                     ui.small("HD SOUND is a Radio Crash quality badge based on measured bitrate.\nMeters show the stream level before volume adjustment.");
@@ -751,34 +751,24 @@ impl eframe::App for RadioApp {
                 muted_display,
             );
             let level =
-                crate::dsp::vu_calibrated(self.meters.rms[c], self.settings.vu_reference_dbfs);
+                crate::dsp::vu_segment_index(self.meters.rms[c], self.settings.vu_reference_dbfs);
+            let held = crate::dsp::vu_segment_index(
+                snap.meters.held_peaks[c],
+                self.settings.vu_reference_dbfs,
+            );
             for (i, db) in crate::dsp::VU_SCALE.iter().enumerate() {
                 let x = 98. + i as f32 * 8.;
+                // Peak hold is a real filament segment in the same row and zone
+                // color, rather than an external cursor/dot above the meter.
+                let on = level.is_some_and(|last| i <= last) || held == Some(i);
                 for row in 0..2 {
                     segment_with_color(
                         &p,
                         rect(x, y + row as f32 * 5.3, 6., 3.7),
-                        level >= *db,
+                        on,
                         vu_color(*db),
                     );
                 }
-            }
-            if let Some(index) = crate::dsp::calibrated_peak_index(
-                snap.meters.held_peaks[c],
-                self.settings.vu_reference_dbfs,
-            ) {
-                let x = 98. + index as f32 * 8.;
-                let marker = rect(x - 0.3, y - 7., 6.6, 3.6);
-                p.rect_filled(
-                    marker.expand(2. * scale),
-                    0.7 * scale,
-                    Color32::from_rgba_unmultiplied(255, 194, 70, 22),
-                );
-                p.rect_filled(marker, 0.3 * scale, Color32::from_rgb(255, 232, 135));
-                p.line_segment(
-                    [pt(x + 2.9, y - 3.1), pt(x + 2.9, y + 9.3)],
-                    Stroke::new(0.9 * scale, Color32::from_rgb(255, 224, 118)),
-                );
             }
         }
         text(&p, pt(99., 257.), "RMS", 7.8 * scale, DIM);

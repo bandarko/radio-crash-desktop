@@ -24,6 +24,7 @@ impl Default for Meters {
     }
 }
 /// Fast stereo level measurement, independent of the FFT window.
+#[cfg(test)]
 pub fn levels(frames: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
     let mut rms = [-60.; 2];
     let mut peaks = [-60.; 2];
@@ -67,15 +68,27 @@ pub fn vu_position(relative: f32) -> f32 {
     }
     1.
 }
-pub fn calibrated_peak_index(dbfs: f32, reference: f32) -> Option<usize> {
+/// The bar and its held segment use the same lower threshold, never rounding
+/// a held value into a segment the instantaneous meter has not actually reached.
+pub fn vu_segment_index(dbfs: f32, reference: f32) -> Option<usize> {
     let relative = vu_calibrated(dbfs, reference);
-    if !relative.is_finite() || relative < VU_SCALE[0] {
+    if !relative.is_finite() || dbfs <= -60. || relative < VU_SCALE[0] {
         return None;
     }
-    Some((vu_position(relative) * (VU_SCALE.len() - 1) as f32).round() as usize)
+    VU_SCALE
+        .partition_point(|threshold| relative >= *threshold)
+        .checked_sub(1)
 }
+
+pub struct LevelBlock {
+    pub rms: [f32; 2],
+    pub max_rms: [f32; 2],
+    pub sample_peaks: [f32; 2],
+}
+
 /// Continuous 50 ms RMS energy integration, independent of packet/block size.
-/// Sample peaks remain on the separate fast peak-hold path.
+/// Retain the maximum of this SAME envelope within each block for VU hold.
+/// Raw sample peaks remain separate diagnostics, not the RMS meter's marker.
 pub struct RmsMeter {
     energy: [f64; 2],
     alpha: f64,
@@ -87,42 +100,46 @@ impl RmsMeter {
             alpha: 1. - (-1. / (rate.max(1) as f64 * 0.05)).exp(),
         }
     }
-    pub fn observe(&mut self, frames: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
-        let (_, peaks) = levels(frames);
+    pub fn observe(&mut self, frames: &[[f32; 2]]) -> LevelBlock {
+        let mut maximum = self.energy;
+        let mut sample_peaks = [0f32; 2];
         for f in frames {
             for (c, sample) in f.iter().enumerate() {
                 let power = (*sample as f64).powi(2);
                 self.energy[c] += self.alpha * (power - self.energy[c]);
+                maximum[c] = maximum[c].max(self.energy[c]);
+                sample_peaks[c] = sample_peaks[c].max(sample.abs());
             }
         }
-        (self.energy.map(|v| db(v.max(0.).sqrt() as f32)), peaks)
+        LevelBlock {
+            rms: self.energy.map(|v| db(v.max(0.).sqrt() as f32)),
+            max_rms: maximum.map(|v| db(v.max(0.).sqrt() as f32)),
+            sample_peaks: sample_peaks.map(db),
+        }
     }
 }
-/// Sample-clock peak hold runs before the GUI, preserving even sub-frame transients.
+
+pub const PEAK_HOLD_SECONDS: f64 = 2.;
+/// Audio-clock VU peak memory. New/equal maxima refresh a two-second hold;
+/// expiration resets to the current meter level rather than inventing a decay.
 pub struct PeakHold {
     value: [f32; 2],
     until: [f64; 2],
-    last: f64,
 }
 impl PeakHold {
     pub fn new() -> Self {
         Self {
             value: [-60.; 2],
             until: [0.; 2],
-            last: 0.,
         }
     }
-    pub fn observe(&mut self, peaks: [f32; 2], seconds: f64) -> [f32; 2] {
-        for (c, peak) in peaks.iter().enumerate() {
-            if *peak >= self.value[c] {
+    pub fn observe(&mut self, maxima: [f32; 2], seconds: f64) -> [f32; 2] {
+        for (c, peak) in maxima.iter().enumerate() {
+            if seconds >= self.until[c] || *peak >= self.value[c] {
                 self.value[c] = *peak;
-                self.until[c] = seconds + 1.5;
-            } else {
-                let elapsed = (seconds - self.last.max(self.until[c])).max(0.) as f32;
-                self.value[c] = (self.value[c] - elapsed * 12.).max(*peak).max(-60.);
+                self.until[c] = seconds + PEAK_HOLD_SECONDS;
             }
         }
-        self.last = seconds;
         self.value
     }
 }
@@ -278,13 +295,13 @@ mod tests {
         assert_eq!(vu_calibrated(0., -18.), 18.);
         assert_eq!(vu_position(-40.), 0.);
         assert_eq!(vu_position(18.), 1.);
-        assert_eq!(calibrated_peak_index(0., 0.), Some(21));
-        assert_eq!(calibrated_peak_index(0., VU_REFERENCE_DBFS), Some(36));
-        assert_eq!(calibrated_peak_index(0., -18.), Some(39));
-        assert_eq!(calibrated_peak_index(-60., VU_REFERENCE_DBFS), None);
-        assert_eq!(calibrated_peak_index(-18., 0.), Some(6));
+        assert_eq!(vu_segment_index(0., 0.), Some(21));
+        assert_eq!(vu_segment_index(0., VU_REFERENCE_DBFS), Some(36));
+        assert_eq!(vu_segment_index(0., -18.), Some(39));
+        assert_eq!(vu_segment_index(-60., VU_REFERENCE_DBFS), None);
+        assert_eq!(vu_segment_index(-18., 0.), Some(6));
         for (i, v) in VU_SCALE.iter().enumerate() {
-            assert_eq!(calibrated_peak_index(*v - 18., -18.), Some(i));
+            assert_eq!(vu_segment_index(*v - 18., -18.), Some(i));
         }
         for pair in VU_SCALE.windows(2) {
             assert!(vu_position(pair[0]) < vu_position(pair[1]));
@@ -328,36 +345,83 @@ mod tests {
     #[test]
     fn rms_is_fast_but_does_not_turn_a_transient_into_a_sustained_level() {
         let mut meter = RmsMeter::new(48000);
-        let (at_50ms, _) = meter.observe(&vec![[0.5, 0.]; 2400]);
+        let at_50ms = meter.observe(&vec![[0.5, 0.]; 2400]).rms;
         assert!((at_50ms[0] - (-8.012)).abs() < 0.02);
-        let (settled, _) = meter.observe(&vec![[0.5, 0.]; 21600]);
+        let settled = meter.observe(&vec![[0.5, 0.]; 21600]).rms;
         assert!((settled[0] + 6.0206).abs() < 0.01);
         assert_eq!(settled[1], -60.);
         let mut impulse = RmsMeter::new(48000);
-        let (body, peak) = impulse.observe(&[[1., 0.]]);
+        let measured = impulse.observe(&[[1., 0.]]);
+        let body = measured.rms;
+        let peak = measured.sample_peaks;
         assert!(body[0] < -30.);
         assert_eq!(peak[0], 0.);
         let mut chunked = RmsMeter::new(48000);
         for _ in 0..100 {
             chunked.observe(&[[0.5, 0.]; 240]);
         }
-        assert!((chunked.observe(&[]).0[0] - settled[0]).abs() < 0.001);
+        assert!((chunked.observe(&[]).rms[0] - settled[0]).abs() < 0.001);
     }
     #[test]
-    fn dsp_peak_survives_short_transient_and_decays() {
+    fn peak_holds_two_seconds_then_resets_without_synthetic_decay() {
         let mut h = PeakHold::new();
         assert_eq!(h.observe([-2., -20.], 0.01), [-2., -20.]);
-        assert_eq!(h.observe([-30., -40.], 1.), [-2., -20.]);
-        let v = h.observe([-30., -40.], 2.01);
-        assert!((v[0] + 8.).abs() < 0.001);
-        assert!((v[1] + 26.).abs() < 0.001);
-        assert_eq!(h.observe([-60., -60.], 9.), [-60.; 2]);
+        assert_eq!(h.observe([-30., -40.], 2.009), [-2., -20.]);
+        assert_eq!(h.observe([-30., -40.], 2.011), [-30., -40.]);
+        assert_eq!(h.observe([-60.; 2], 9.), [-60.; 2]);
     }
     #[test]
     fn equal_peaks_refresh_hold() {
         let mut h = PeakHold::new();
         h.observe([-3., -9.], 0.);
-        h.observe([-3., -9.], 1.4);
-        assert_eq!(h.observe([-40.; 2], 2.8), [-3., -9.]);
+        h.observe([-3., -9.], 1.9);
+        assert_eq!(h.observe([-40.; 2], 3.8), [-3., -9.]);
+        assert_eq!(h.observe([-40.; 2], 3.901), [-40.; 2]);
+    }
+    #[test]
+    fn new_peak_refreshes_only_its_own_channel() {
+        let mut h = PeakHold::new();
+        h.observe([-8., -9.], 0.);
+        h.observe([-3., -20.], 1.9);
+        assert_eq!(h.observe([-30., -40.], 2.001), [-3., -40.]);
+        assert_eq!(h.observe([-30., -50.], 3.8), [-3., -40.]);
+        assert_eq!(h.observe([-30., -50.], 3.901), [-30., -40.]);
+    }
+    #[test]
+    fn vu_hold_keeps_envelope_peak_instead_of_raw_sample_peak() {
+        let mut frames = [[0.; 2]; 256];
+        frames[0][0] = 1.;
+        let mut meter = RmsMeter::new(48000);
+        let block = meter.observe(&frames);
+        assert_eq!(block.sample_peaks[0], 0.);
+        assert!(block.max_rms[0] < -30.);
+        assert!(block.max_rms[0] > block.rms[0] + 0.4);
+        assert_eq!(block.max_rms[1], -60.);
+        let mut hold = PeakHold::new();
+        let held = hold.observe(block.max_rms, 256. / 48000.);
+        assert_eq!(held, block.max_rms);
+        assert_ne!(held[0], block.sample_peaks[0]);
+        let mut chunked = RmsMeter::new(48000);
+        let mut maximum = [-60f32; 2];
+        for part in frames.chunks(17) {
+            let block = chunked.observe(part);
+            for (value, measured) in maximum.iter_mut().zip(block.max_rms) {
+                *value = value.max(measured);
+            }
+        }
+        assert_eq!(maximum, block.max_rms);
+        assert_eq!(chunked.observe(&[]).rms, block.rms);
+    }
+    #[test]
+    fn held_segment_uses_the_same_thresholds_as_the_bar() {
+        for (i, pair) in VU_SCALE.windows(2).enumerate() {
+            let middle = (pair[0] + pair[1]) / 2.;
+            let measured = middle + VU_REFERENCE_DBFS;
+            assert_eq!(vu_segment_index(measured, VU_REFERENCE_DBFS), Some(i));
+            assert_eq!(VU_SCALE.iter().rposition(|v| middle >= *v), Some(i));
+        }
+        assert_eq!(vu_segment_index(-60., -24.), None);
+        assert_eq!(vu_segment_index(f32::NAN, -15.), None);
+        assert_eq!(vu_segment_index(10., -15.), Some(39));
     }
 }

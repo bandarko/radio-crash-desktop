@@ -1,8 +1,8 @@
 # Radio Crash Desktop - macOS
 
-Verzija 1.1.4 · Universal: Apple Silicon i Intel · macOS 11 ili noviji.
+Verzija 1.1.5 · Universal: Apple Silicon i Intel · macOS 11 ili noviji.
 
-Mac build 115 potpisan je Developer ID Application certifikatom i uspješno je prošao Appleovu notarizaciju. Notarizacijski ticket priložen je aplikaciji.
+Mac build 116 potpisan je Developer ID Application certifikatom i uspješno je prošao Appleovu notarizaciju. Notarizacijski ticket priložen je aplikaciji.
 
 1. Raspakirajte ZIP.
 2. Povucite **Radio Crash Desktop.app** u **Applications**.

@@ -57,21 +57,20 @@ impl Frame {
             rgba: vec![0; (width * height * 4) as usize],
         };
         for c in 0..2 {
-            let position = crate::dsp::vu_position(crate::dsp::vu_calibrated(levels[c], reference));
-            let peak =
-                crate::dsp::calibrated_peak_index(peaks[c], reference).map(|i| i as f32 / 39.);
+            let level = crate::dsp::vu_segment_index(levels[c], reference);
+            let peak = crate::dsp::vu_segment_index(peaks[c], reference);
             match layout {
                 Layout::MenuBar => {
                     let y = 3 + c as u32 * 20;
                     f.rect(0, y - 1, 79, 18, [7, 17, 19, 175]);
                     f.letter(c, 3, y, 3);
                     for i in 0..12 {
-                        let on = position * 12. > i as f32 && levels[c] > -59.;
+                        let on = level.is_some_and(|last| i <= compact_index(last, 12));
                         let color = color(on, i, 12);
                         f.rect(17 + i * 5, y + 4, 4, 8, color);
                     }
                     if let Some(v) = peak {
-                        let i = (v * 11.).round() as u32;
+                        let i = compact_index(v, 12);
                         f.rect(17 + i * 5, y + 1, 4, 2, [255, 237, 151, 255]);
                     }
                 }
@@ -80,11 +79,11 @@ impl Frame {
                     f.rect(x - 1, 2, 12, 29, [7, 17, 19, 175]);
                     f.letter(c, x + 3, 26, 1);
                     for i in 0..10 {
-                        let on = position * 10. > i as f32 && levels[c] > -59.;
+                        let on = level.is_some_and(|last| i <= compact_index(last, 10));
                         f.rect(x + 1, 23 - i * 2, 8, 1, color(on, i, 10));
                     }
                     if let Some(v) = peak {
-                        let i = (v * 9.).round() as u32;
+                        let i = compact_index(v, 10);
                         f.rect(x + 1, 22 - i * 2, 8, 1, [255, 237, 151, 255]);
                     }
                 }
@@ -92,6 +91,9 @@ impl Frame {
         }
         f
     }
+}
+fn compact_index(index: usize, segments: usize) -> u32 {
+    (((index + 1) * segments - 1) / crate::dsp::VU_SCALE.len()) as u32
 }
 fn color(on: bool, i: u32, n: u32) -> [u8; 4] {
     if !on {
@@ -127,6 +129,43 @@ mod tests {
                 }
             }
             assert!(changed > 0);
+        }
+    }
+    #[test]
+    fn compact_hold_matches_bar_endpoint_and_silence_stays_dark() {
+        for layout in [Layout::MenuBar, Layout::NotificationArea] {
+            for reference in [-24., -15., 0.] {
+                let silence = Frame::render_calibrated([-60.; 2], [-60.; 2], layout, reference);
+                assert_eq!(
+                    silence.rgba,
+                    Frame::render_calibrated([-60.; 2], [-60.; 2], layout, 0.).rgba
+                );
+                for db in [-50., -35.25, -18.4, -11.4, -7.2, 0.] {
+                    let f = Frame::render_calibrated([db; 2], [db; 2], layout, reference);
+                    let n = if layout == Layout::MenuBar { 12 } else { 10 };
+                    let pixel = |x: u32, y: u32| {
+                        &f.rgba
+                            [((y * f.width + x) * 4) as usize..((y * f.width + x) * 4 + 4) as usize]
+                    };
+                    let last_bar = (0..n).rfind(|i| {
+                        let p = if layout == Layout::MenuBar {
+                            pixel(18 + i * 5, 9)
+                        } else {
+                            pixel(5, 23 - i * 2)
+                        };
+                        p[..3].iter().any(|v| *v > 128)
+                    });
+                    let marker = (0..n).find(|i| {
+                        let p = if layout == Layout::MenuBar {
+                            pixel(18 + i * 5, 4)
+                        } else {
+                            pixel(5, 22 - i * 2)
+                        };
+                        p == [255, 237, 151, 255]
+                    });
+                    assert_eq!(last_bar, marker, "level={db}, reference={reference}");
+                }
+            }
         }
     }
     #[test]
