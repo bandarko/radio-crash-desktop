@@ -1,8 +1,8 @@
-# Radio Crash Desktop — macOS
+# Radio Crash Desktop - macOS
 
 Verzija 1.1.2 · Universal: Apple Silicon i Intel · macOS 11 ili noviji.
 
-Mac build 112 potpisan je Developer ID Application certifikatom i uspješno je prošao Appleovu notarizaciju. Notarizacijski ticket priložen je aplikaciji.
+Mac build 113 potpisan je Developer ID Application certifikatom i uspješno je prošao Appleovu notarizaciju. Notarizacijski ticket priložen je aplikaciji.
 
 1. Raspakirajte ZIP.
 2. Povucite **Radio Crash Desktop.app** u **Applications**.
@@ -10,7 +10,7 @@ Mac build 112 potpisan je Developer ID Application certifikatom i uspješno je p
 
 Za slušanje je potrebna internetska veza. Nije potrebna dodatna instalacija dekodera. Postavke se spremaju u korisnički Library/Application Support direktorij.
 
-Za potpuni izlaz kliknite **EXIT** gore desno na receiveru ili pritisnite **Cmd+Q**. Power služi za standby, a minimiziranje zadržava reprodukciju.
+Kliknite postojeći **POWER** gumb i odaberite **OFF** za standby ili **EXIT** za potpuni izlaz. Kad je radio ugašen, isti izbornik nudi **ON / EXIT**. **Cmd+Q** također zatvara aplikaciju. Minimiziranje zadržava reprodukciju.
 
 Veličina prozora: povucite desni ili donji rub kućišta; za točne dimenzije otvorite Settings → Window size. Za minimiziranje kliknite desnom tipkom na gornji dio kućišta i odaberite **Minimize to tray · L/R meters**. Mali L/R instrumenti ostaju u traci izbornika. Lijevi klik vraća prozor, desni otvara Show / Quit. Cmd+M standardno minimizira u Dock; Settings → Minimize to tray preusmjerava ga na tray.
 

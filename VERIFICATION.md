@@ -1,10 +1,10 @@
 # Verification - 1.1.2 window controls
 
 - Egui interaction tests exercise all button centers and four inset corners at 560/780/1200 widths and letterboxed wide/tall custom sizes, with 100/125/150/200% native pixels per point. The same context also changes DPI and client size between clicks.
-- The actual EXIT widget emits Close for the root viewport and does not emit Minimized/Visible(false). Clicking blank metal between controls does not activate a button. Existing screw interaction tests remain.
+- Real egui pointer events open the existing POWER switch popup, select OFF and ON as explicit standby/power actions, select EXIT as root Close (without Minimized/Visible(false)), and dismiss the menu without changing audio state. There is no new EXIT switch on the fascia. Clicking blank metal between controls does not activate a button. Existing screw interaction tests remain.
 - Windows creates a decorated window from startup, avoiding the borderless OpenGL drawable/client offset reported in [egui issue 2770](https://github.com/emilk/egui/issues/2770). The symptoms match the owner's Windows 10 Pro/100% report, but this is not proof of the specific HP GPU cause. No arbitrary pointer offset is introduced.
 - An embedded Windows manifest sets Per-Monitor V2 with Per-Monitor fallback before window creation. The Windows executable's manifest is inspected separately during packaging.
-- Native Windows hardware/driver interaction remains unverified locally. Ask the owner to confirm centered clicks and EXIT/X on the affected HP. CI build/test results and Mac notarization evidence are recorded in the release manifest.
+- Native Windows hardware/driver interaction remains unverified locally. Ask the owner to confirm centered clicks and POWER > EXIT / X on the affected HP. CI build/test results and Mac notarization evidence are recorded in the release manifest.
 
 # Verification - 1.1.1 calibration patch
 
@@ -25,7 +25,7 @@
 
 The following section preserves the 1.0 release evidence and limits.
 
-# Verification — current local build
+# Verification - current local build
 
 Version 1.0.0, Mac build 101, released on 2026-10-30. The owner approved the appearance and requested the first release. The evidence below does not claim native Windows playback verification.
 

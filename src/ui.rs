@@ -257,7 +257,7 @@ impl RadioApp {
                         "Play Radio Crash"
                     }
                 }
-                "power" => "Power / standby",
+                "power" => "Power menu: ON / OFF / EXIT",
                 "mute" => {
                     if lit {
                         "Unmute"
@@ -678,7 +678,6 @@ impl eframe::App for RadioApp {
                 ctx.send_viewport_cmd(ViewportCommand::Close);
             }
         });
-        panel::exit_button(ui, panel.rect(panel::EXIT));
         // Coordinates below map the live phosphor plane inside the photographed glass aperture.
         let pt = |x: f32, y: f32| {
             base + vec2(
@@ -948,11 +947,9 @@ impl eframe::App for RadioApp {
             hd && snap.status == "ON AIR" && self.power,
         );
         ui.interact(badge,Id::unique("hd-radio-quality"),Sense::hover()).on_hover_text(format!("Radio Crash oznaka kvalitete streama. Pun sjaj od {} kbps. Internetski radio; nije HD Radio/IBOC prijamnik.",self.settings.hd_kbps));
-        if self
-            .button(ui, panel.rect(panel::POWER), "power", self.power)
-            .clicked()
-        {
-            self.power = !self.power;
+        let power = self.button(ui, panel.rect(panel::POWER), "power", self.power);
+        if let Some(action) = panel::power_menu(&power, self.power) {
+            self.power = action == panel::PowerAction::On;
             if self.power {
                 self.engine.start(self.settings.clone());
             } else {

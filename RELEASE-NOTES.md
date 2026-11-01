@@ -2,17 +2,17 @@
 
 1. studenoga 2026.
 
-- Dodan vidljiv, diskretan **EXIT** gore desno na receiveru za potpuni izlaz iz aplikacije na Macu i Windowsima. Power ostaje standby, a minimiziranje nastavlja reprodukciju.
+- Postojeći **POWER** gumb sada otvara **OFF / EXIT** na Macu i Windowsima. OFF zaustavlja radio u standby, a EXIT potpuno zatvara aplikaciju. U standby stanju izbornik nudi **ON / EXIT**. Nema dodatnog gumba na aluminijskoj ploči.
 - Windows izdanje ima standardnu naslovnu traku s gumbima za minimiziranje i **X** za izlaz. **Alt+F4** također zatvara player. Time se izbjegava prikaz bez okvira, povezan s pomakom slike i klikova na nekim starijim Intel grafičkim sustavima pod Windowsom 10.
 - Windows EXE sada sadrži izričit Per-Monitor V2 DPI manifest s Per-Monitor fallbackom.
 - Klik površine Power, Play/Stop, Mute i Settings obuhvaćaju cijeli vidljivi metalni gumb. Položaji prikaza i klikova koriste jedan izračun pri svim veličinama prozora.
 - VU kalibracija, stvarni audio i odobreni HD Radio iluminator ostaju nepromijenjeni.
 
-Regresijski testovi provjeravaju klikove u sredini i blizu svih rubova gumba, skale 100/125/150/200 %, promjene veličine i izlaz. To nije zamjena za ručnu provjeru na prijavljenom HP Windows 10 Pro notebooku; njegov grafički sustav nije dostupan u ovoj provjeri. Windows EXE nije Authenticode potpisan.
+Regresijski testovi provjeravaju klikove u sredini i blizu svih rubova gumba, skale 100/125/150/200 %, promjene veličine te odvojene ON/OFF/EXIT akcije i zatvaranje izbornika bez promjene reprodukcije. To nije zamjena za ručnu provjeru na prijavljenom HP Windows 10 Pro notebooku; njegov grafički sustav nije dostupan u ovoj provjeri. Windows EXE nije Authenticode potpisan.
 
 ## English
 
-A visible EXIT switch now closes the entire app on both platforms. Windows uses its standard native title bar with X / Alt+F4, avoiding the borderless OpenGL rendering/input path implicated in legacy Intel Windows 10 offset reports. An embedded manifest declares Per-Monitor V2 DPI awareness with a Per-Monitor fallback. Click targets span the visible metal buttons and share the fascia's geometry. Pointer tests cover multiple sizes, aspect ratios and scaling factors; manual confirmation on the affected HP remains pending. Audio, VU calibration and the approved HD Radio illuminator are unchanged. The Windows download remains unsigned.
+The existing POWER switch now opens OFF / EXIT on both platforms, or ON / EXIT in standby. OFF stops playback while keeping the app open; EXIT closes the entire app. No additional exit switch is drawn on the fascia. Windows uses its standard native title bar with X / Alt+F4, avoiding the borderless OpenGL rendering/input path implicated in legacy Intel Windows 10 offset reports. An embedded manifest declares Per-Monitor V2 DPI awareness with a Per-Monitor fallback. Click targets span the visible metal buttons and share the fascia's geometry. Pointer tests cover multiple sizes, aspect ratios and scaling factors; manual confirmation on the affected HP remains pending. Audio, VU calibration and the approved HD Radio illuminator are unchanged. The Windows download remains unsigned.
 
 ---
 

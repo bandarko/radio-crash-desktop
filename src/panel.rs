@@ -6,9 +6,8 @@ pub const POWER: [f32; 4] = [84., 302., 66., 55.];
 pub const PLAY: [f32; 4] = [222., 299., 128., 60.];
 pub const MUTE: [f32; 4] = [699., 302., 79., 55.];
 pub const SETTINGS: [f32; 4] = [1060., 303., 60., 52.];
-pub const EXIT: [f32; 4] = [1063., 23., 76., 25.];
 pub const MINIMIZE: [f32; 4] = [14., 19., 43., 41.];
-pub const DRAG: [f32; 4] = [62., 30., 987., 62.];
+pub const DRAG: [f32; 4] = [62., 30., 1093., 62.];
 
 #[derive(Clone, Copy)]
 pub struct Panel {
@@ -39,35 +38,53 @@ pub fn click_target(ui: &mut Ui, rect: Rect, name: &str) -> Response {
         .on_hover_cursor(CursorIcon::PointingHand)
 }
 
-pub fn exit_button(ui: &mut Ui, rect: Rect) -> Response {
-    let response = click_target(ui, rect, "receiver-exit")
-        .on_hover_text("Exit Radio Crash - stop audio and close the application");
-    let s = rect.height() / 25.;
-    let p = ui.painter();
-    // A small recessed equipment switch above the heritage inscription.
-    p.rect_filled(rect, 3. * s, Color32::from_rgb(16, 18, 18));
-    p.rect_stroke(
-        rect,
-        3. * s,
-        Stroke::new(0.8 * s, Color32::from_gray(84)),
-        StrokeKind::Inside,
-    );
-    let ink = if response.hovered() {
-        Color32::from_rgb(255, 174, 143)
-    } else {
-        Color32::from_rgb(205, 205, 195)
-    };
-    p.text(
-        rect.center(),
-        Align2::CENTER_CENTER,
-        "EXIT",
-        FontId::monospace(11. * s),
-        ink,
-    );
-    if response.clicked() {
-        ui.ctx().send_viewport_cmd(ViewportCommand::Close);
-    }
-    response
+#[derive(Debug, PartialEq, Eq)]
+pub enum PowerAction {
+    On,
+    Off,
+}
+
+/// The existing physical POWER switch owns standby and application exit.
+/// Opening or dismissing this menu never changes playback by itself.
+pub fn power_menu(response: &Response, powered: bool) -> Option<PowerAction> {
+    let mut action = None;
+    Popup::menu(response)
+        .align(emath::RectAlign::TOP_START)
+        .frame(
+            Frame::popup(&response.ctx.global_style())
+                .fill(Color32::from_rgb(22, 25, 25))
+                .stroke(Stroke::new(1., Color32::from_rgb(90, 91, 85)))
+                .inner_margin(8.),
+        )
+        .show(|ui| {
+            ui.set_min_width(136.);
+            if ui
+                .button(if powered { "OFF" } else { "ON" })
+                .on_hover_text(if powered {
+                    "Stop radio and enter standby"
+                } else {
+                    "Turn on and play Radio Crash"
+                })
+                .clicked()
+            {
+                action = Some(if powered {
+                    PowerAction::Off
+                } else {
+                    PowerAction::On
+                });
+                ui.close();
+            }
+            ui.separator();
+            if ui
+                .button("EXIT")
+                .on_hover_text("Stop audio and close the entire application")
+                .clicked()
+            {
+                ui.ctx().send_viewport_cmd(ViewportCommand::Close);
+                ui.close();
+            }
+        });
+    action
 }
 
 #[cfg(test)]
@@ -96,7 +113,6 @@ mod tests {
                     clicked.push(n);
                 }
             }
-            exit_button(root, panel.rect(EXIT));
             root.interact(
                 panel.volume(),
                 Id::unique("volume"),
@@ -189,14 +205,96 @@ mod tests {
             assert_eq!(click(&ctx, area, dpi, point).0, [3]);
         }
     }
+    fn menu_frame(
+        ctx: &Context,
+        powered: bool,
+        events: Vec<Event>,
+    ) -> (Option<PowerAction>, FullOutput) {
+        let mut action = None;
+        let mut out = ctx.run_ui(
+            RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(640., 235.))),
+                events,
+                ..Default::default()
+            },
+            |root| {
+                let panel = Panel::new(root.max_rect());
+                let response = click_target(root, panel.rect(POWER), "power");
+                action = power_menu(&response, powered);
+            },
+        );
+        out.textures_delta.clear();
+        (action, out)
+    }
+    fn menu_click(ctx: &Context, powered: bool, point: Pos2) -> (Option<PowerAction>, FullOutput) {
+        menu_frame(
+            ctx,
+            powered,
+            vec![
+                Event::PointerMoved(point),
+                Event::PointerButton {
+                    pos: point,
+                    button: PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Modifiers::NONE,
+                },
+            ],
+        );
+        menu_frame(
+            ctx,
+            powered,
+            vec![Event::PointerButton {
+                pos: point,
+                button: PointerButton::Primary,
+                pressed: false,
+                modifiers: Modifiers::NONE,
+            }],
+        )
+    }
+    fn open_power(ctx: &Context, powered: bool) -> FullOutput {
+        menu_frame(ctx, powered, vec![]);
+        let area = Rect::from_min_size(Pos2::ZERO, vec2(640., 235.));
+        let (action, _) = menu_click(ctx, powered, Panel::new(area).rect(POWER).center());
+        assert_eq!(action, None, "opening the menu must not toggle playback");
+        menu_frame(ctx, powered, vec![]).1
+    }
+    fn label_center(out: &FullOutput, label: &str) -> Pos2 {
+        out.shapes
+            .iter()
+            .find_map(|shape| match &shape.shape {
+                Shape::Text(text) if text.galley.text() == label => {
+                    Some(text.pos + text.galley.size() / 2.)
+                }
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("missing menu label {label}"))
+    }
     #[test]
-    fn exit_closes_root_instead_of_minimizing() {
-        for dpi in [1., 1.25, 1.5, 2.] {
+    fn power_menu_off_and_on_are_explicit_actions() {
+        for (powered, label, expected) in [
+            (true, "OFF", PowerAction::Off),
+            (false, "ON", PowerAction::On),
+        ] {
             let ctx = Context::default();
-            let area = Rect::from_min_size(Pos2::ZERO, vec2(640., 235.));
-            let point = Panel::new(area).rect(EXIT).center();
-            let (clicked, out) = click(&ctx, area, dpi, point);
-            assert!(clicked.is_empty());
+            let out = open_power(&ctx, powered);
+            let point = label_center(&out, label);
+            let (action, out) = menu_click(&ctx, powered, point);
+            assert_eq!(action, Some(expected));
+            assert!(
+                !out.viewport_output[&ViewportId::ROOT]
+                    .commands
+                    .iter()
+                    .any(|cmd| matches!(cmd, ViewportCommand::Close))
+            );
+        }
+    }
+    #[test]
+    fn power_menu_exit_closes_root_instead_of_minimizing() {
+        for powered in [true, false] {
+            let ctx = Context::default();
+            let out = open_power(&ctx, powered);
+            let (action, out) = menu_click(&ctx, powered, label_center(&out, "EXIT"));
+            assert_eq!(action, None);
             let commands = &out.viewport_output[&ViewportId::ROOT].commands;
             assert!(
                 commands
@@ -208,6 +306,18 @@ mod tests {
                 ViewportCommand::Visible(false) | ViewportCommand::Minimized(true)
             )));
         }
+    }
+    #[test]
+    fn dismissing_power_menu_leaves_audio_state_alone() {
+        let ctx = Context::default();
+        open_power(&ctx, true);
+        assert_eq!(menu_click(&ctx, true, pos2(500., 50.)).0, None);
+        let (_, out) = menu_frame(&ctx, true, vec![]);
+        assert!(
+            !out.shapes.iter().any(
+                |shape| matches!(&shape.shape,Shape::Text(text) if text.galley.text()=="EXIT")
+            )
+        );
     }
     #[test]
     fn blank_metal_does_not_activate_neighboring_controls() {
