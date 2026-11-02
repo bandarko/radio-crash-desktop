@@ -32,7 +32,7 @@ Absolute True Peak is in dBTP and has its own two-second held value, independent
 
 Only momentary/short-term modes are enabled: a fixed 3 s history, no indefinitely growing integrated history and no normalization. LUFS warm-up is 400 ms / 3 s, queried at about 10 Hz. Silence and filter-tail readings below -100 LUFS are unavailable. True Peak updates per 256 consumed frames on the analysis worker. The original analogue peak-meter comparison remains historical context, not a claim of circuitry emulation.
 
-## Optional analog skin (local 1.4.0 preview)
+## Optional analog skin (1.4.0)
 
 The digital profiles above remain unchanged. Analog VU - Silver Aluminium uses
 a separate fixed full-wave-average detector, sine calibrated, with a 300 ms

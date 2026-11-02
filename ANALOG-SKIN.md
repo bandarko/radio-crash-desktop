@@ -43,9 +43,9 @@ nonfinite sample safety and current-linear +3 scale placement. Separate egui
 pointer tests cover both layouts at compact/full sizes and 100/125/150/200% DPI.
 Native Windows pointer/GPU behavior still requires physical owner testing.
 
-## Local owner preview
+## Owner preview and release
 
-Build is 1.4.0, local review only, not a GitHub release. A Mac preview bundle
+The owner approved the revised local 1.4.0 build and explicitly requested publication. A separate Mac preview bundle
 with `Contents/Resources/LOCAL-PREVIEW` uses separate `analog-preview` settings
 under the normal config directory. It does not overwrite `/Applications` or
 normal settings. `RC_CONFIG_DIR` remains available for isolated runtime QA.

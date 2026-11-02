@@ -29,7 +29,7 @@ The L/R tray icon is generated deterministically in native Rust code (`tray_mete
 
 The original v4 fascia and HD Radio lens remain unchanged. Built-in imagegen edited only the header year in `assets/receiver-header-since-1986-source.png`; its exact prompt is saved alongside it. `Materials` composites only the small year region from that image. The rest of the full generated image is not used at runtime. The engraving experiment was abandoned at the owner's request and is not included in the app or source assets.
 
-## Optional silver analog skin (local 1.4.0 preview)
+## Optional silver analog skin (1.4.0)
 
 - Material substrate: `assets/receiver-analog-silver-substrate.png`, built-in imagegen precise edits from the owner-approved concept. Exact prompt set and generated-source identifiers are in `assets/receiver-analog-silver-substrate.prompt.txt`.
 - Natural silver aluminium, transparent exterior, blank amber ivory dial cards, small empty smoked-glass window, left PLAY/STOP, large central volume knob, right MUTE and SETTINGS without an LED.

@@ -1,12 +1,15 @@
-# 1.4.0 local preview (not published)
+# Radio Crash Desktop 1.4.0
 
-- Optional Analog VU - Silver Aluminium skin in Receiver settings. VFD Digital remains the default; saved choices persist.
-- Natural silver brushed aluminium, two illuminated needle instruments, slim smoked-glass amber display, large central volume knob. Settings has no LED.
-- Authentic fixed full-wave average detector with sine calibration and a sample-clock moving-coil model: 300 ms to 99% deflection and 1.25% overshoot. Classic current-linear scale ends at +3 VU. Independent L/R from consumed playback PCM before volume.
-- Analog skin exposes only its own VU level adjustment (default reference -8 dBFS for a sine). No RMS/Peak response selection, decay setting or fake peak-hold needle. Digital response/calibration remain saved separately and unchanged.
-- Long titles scroll; artist, title, status and technical properties use live stream data. Local standby clock and illumination controls work in both skins.
-- Local owner review required before ANY GitHub release upload/publication. This is not a published, notarized or Windows-runtime-approved release.
-- Includes the previously prepared Windows compatibility candidate; physical HP alignment feedback remains pending.
+- New optional Analog VU - Silver Aluminium skin in Settings > Receiver skin. VFD Digital - Black Aluminium remains the default, and the selected skin is remembered.
+- Natural silver brushed aluminium, warm backlit analog instruments, slim amber now-playing display, large central volume knob and SETTINGS without an LED.
+- Fixed classical full-wave-average VU measurement from actual playback PCM. Independent L/R channels, 300 ms moving-coil response, constant-length circular 90-degree needle travel and a scale ending at +3 VU.
+- Analog display sensitivity is calibrated separately at -8 dBFS sine RMS by default. Only its level can be adjusted. Digital RMS/Peak, decay, reference and hold preferences are preserved separately. Audio gain and stream quality are unchanged.
+- Live artist/title, Croatian characters, scrolling text, stream properties, instrument illumination and standby clock in the new skin.
+- Windows: correct the overly strict graphics eligibility check so capable OpenGL 3.3 hardware can use Enhanced. Preserve Classic fallback for older or unsupported graphics.
+- Windows: retain the borderless receiver and use a native popup window without caption/resize frame bits. Physical alignment on the older HP still needs owner confirmation.
+- Clean downloads: application, short instructions/release notes and required licenses, without development documents in the ZIP root.
+
+Validation: 63 local macOS ARM tests and strict Clippy passed. The owner tried and approved the revised analog skin and movement. macOS Intel and Windows packages build from the shared Rust source; physical runtime on those platforms has not been verified for this release. Windows EXE is unsigned. Mac release signing/notarization and native CI are recorded in the release manifest.
 
 # 1.3.2 candidate (not a stable release)
 

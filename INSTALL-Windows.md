@@ -1,6 +1,6 @@
 # Radio Crash Desktop - Windows x64
 
-Verzija 1.3.1 · Namijenjeno za Windows 10/11, 64-bitni x64 sustav.
+Verzija 1.4.0 · Namijenjeno za Windows 10/11, 64-bitni x64 sustav.
 
 1. Raspakirajte cijeli ZIP u vlastitu mapu, primjerice Documents/Radio Crash Desktop.
 2. Pokrenite **RadioCrashDesktop.exe** i pritisnite Power ili Play.
@@ -22,3 +22,7 @@ English: Extract the entire ZIP and run RadioCrashDesktop.exe. No installer is r
 ## Ažuriranja
 
 Za korisnike verzije 1.0.0 potrebna je jedna ručna instalacija 1.1.0. Od 1.1.0 player automatski provjerava nova stabilna izdanja. Provjera je dostupna i u Settings te tray izborniku. Za minimiziranje kliknite lijevom tipkom na lijevi gornji vijak kućišta.
+
+## Analogni skin
+
+Settings > Receiver skin > Analog VU - Silver Aluminium. Crni VFD ostaje zadani skin. Analogni VU ima fiksni klasični odziv i skalu do +3; mijenja se samo vlastita level postavka. Digitalne postavke ostaju sačuvane. ZIP sadrži EXE, PROCITAJ-ME.txt i LICENSES.txt.

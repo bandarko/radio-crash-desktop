@@ -1,3 +1,13 @@
+# Release 1.4.0 verification
+
+- The owner approved the revised local analog skin/movement, then explicitly requested GitHub publication with "objavi".
+- Tested runtime source: local preview commit 83fda40638230cb0d124659462606f2b97003a9b. Release documentation/packaging does not change the approved Rust code.
+- 63 local ARM Mac tests and strict Clippy passed. Native CI, signing, notarization, archive roundtrip and public hashes are recorded in the release manifest.
+- Actual consumed-PCM full-wave average detection: sine calibration at 44.1/48/96 kHz, independent stereo, 300 ms to 99%, 1.25% step overshoot, short pulses, chunk independence, nonfinite safety and current-linear +3 placement tested deterministically.
+- Native live AAC/CoreAudio playback, measured properties, changing Croatian metadata and revised analog needles captured at runtime. Owner approved motion. Default VFD and digital preferences remain separate.
+- Exact menu choice/reversion and pointer targets at compact/full sizes and 100/125/150/200% DPI tested with egui input. Actual legacy HP pointer behavior remains physically unverified.
+- macOS Intel and Windows release builds are supported. Physical Intel Mac and native Windows playback/GPU interaction for 1.4.0 have not been manually verified. Windows EXE is unsigned.
+
 # Verification - 1.3.1 Windows receiver frame
 
 - The root viewport explicitly requests no decorations and retains transparency. The separate Settings viewport retains native decorations. macOS already used a borderless root; its rendering and audio implementation are unchanged.
