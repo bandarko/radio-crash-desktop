@@ -162,3 +162,13 @@ The resulting tray-check.json includes hidden logic ticks, changed native icon u
 For native visual QA, `--power-menu` opens the actual POWER popup once on launch. Combine it with an isolated `RC_CONFIG_DIR` and `--capture` for a rendered preview; it does not select an action. The popup explicitly uses bright text and dark interaction colors independently of the OS theme.
 
 The [meter reference comparison](https://github.com/bandarko/radio-crash-desktop/blob/v1.2.0/METER-REFERENCE.md) documents the original hardware sources and the intentional distinction between this RMS VU and an analogue peak-reading meter.
+
+## Download package contents
+
+User ZIPs contain the app and one short `PROCITAJ-ME.txt` with launch instructions and current release notes. Windows also contains a single `LICENSES.txt`, consolidating the original notices, font licenses, dependency inventory/source links and upstream license texts. Mac license notices remain inside the app bundle. Development verification reports, design prompts, duplicate Markdown documents and source archives are not copied into the user payload. Build scripts require Python 3 (standard library only); Python is not shipped or required to run the app.
+
+Website links remain:
+- macOS: https://github.com/bandarko/radio-crash-desktop/releases/latest/download/Radio-Crash-Desktop-macOS-universal.zip
+- Windows: https://github.com/bandarko/radio-crash-desktop/releases/latest/download/Radio-Crash-Desktop-Windows-x64.zip
+
+Packaging-only refreshes preserve existing executable bytes and signed Mac app contents. They do not change the installed app version or promote test releases to stable.
