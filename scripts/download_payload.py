@@ -64,8 +64,8 @@ def prepare_windows(binary):
     with tempfile.TemporaryDirectory(prefix='.windows-payload-', dir=destination.parent) as temp:
         stage = pathlib.Path(temp)
         shutil.copy2(binary, stage / 'RadioCrashDesktop.exe')
-        version = next(line.split('"')[1] for line in (ROOT / 'Cargo.toml').read_text().splitlines() if line.startswith('version = '))
-        (stage / 'PROCITAJ-ME.txt').write_text(readme('windows', version, (ROOT / 'RELEASE-NOTES.md').read_text()), encoding='utf-8')
+        version = next(line.split('"')[1] for line in (ROOT / 'Cargo.toml').read_text(encoding='utf-8').splitlines() if line.startswith('version = '))
+        (stage / 'PROCITAJ-ME.txt').write_text(readme('windows', version, (ROOT / 'RELEASE-NOTES.md').read_text(encoding='utf-8')), encoding='utf-8')
         (stage / 'LICENSES.txt').write_bytes(legal_bundle(legal_sources(ROOT)))
         if destination.exists():
             shutil.rmtree(destination)  # Generated dist payload only, never user configuration.
@@ -85,7 +85,7 @@ def prepare_mac_resources(resources):
     if (resources / 'licenses').exists():
         shutil.rmtree(resources / 'licenses')
     (resources / 'LICENSES.txt').write_bytes(legal_bundle(legal_sources(ROOT)))
-    (resources / 'RELEASE-NOTES.txt').write_text(current_notes((ROOT / 'RELEASE-NOTES.md').read_text()), encoding='utf-8')
+    (resources / 'RELEASE-NOTES.txt').write_text(current_notes((ROOT / 'RELEASE-NOTES.md').read_text(encoding='utf-8')), encoding='utf-8')
 
 
 def prepare_mac_download(app, destination):
@@ -96,7 +96,7 @@ def prepare_mac_download(app, destination):
         shutil.rmtree(destination)
     destination.mkdir(parents=True)
     subprocess.run(['ditto', app, destination / app.name], check=True)
-    (destination / 'PROCITAJ-ME.txt').write_text(readme('macos', version, (ROOT / 'RELEASE-NOTES.md').read_text()), encoding='utf-8')
+    (destination / 'PROCITAJ-ME.txt').write_text(readme('macos', version, (ROOT / 'RELEASE-NOTES.md').read_text(encoding='utf-8')), encoding='utf-8')
 
 
 if __name__ == '__main__':
