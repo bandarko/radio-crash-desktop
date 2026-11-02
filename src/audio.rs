@@ -292,6 +292,7 @@ fn session(
         let mut vu = [[0.; 2]; 256];
         let mut vu_index = 0;
         let mut rms_meter = crate::dsp::RmsMeter::new(output_rate);
+        let mut analog_meter = crate::dsp_analog::AnalogMeter::new(output_rate);
         let mut fast_rms_meter = crate::dsp::RmsMeter::with_time_constant(output_rate, 0.015);
         let mut peak_meter = crate::dsp::PeakMeter::new(output_rate);
         let mut peak_hold = crate::dsp::PeakHold::new();
@@ -307,6 +308,7 @@ fn session(
                 vu_index += 1;
                 if vu_index == vu.len() {
                     let measured = rms_meter.observe(&vu);
+                    let analog = analog_meter.observe(&vu);
                     let fast = fast_rms_meter.observe(&vu);
                     let peak = peak_meter.observe(&vu);
                     analyzed_frames += vu.len() as u64;
@@ -337,6 +339,7 @@ fn session(
                     snapshot.meters.fast_rms = fast;
                     snapshot.meters.peak_meter = peak;
                     snapshot.meters.rms = measured.rms;
+                    snapshot.meters.analog = analog;
                     snapshot.meters.peaks = measured.sample_peaks;
                     if let Some(quality) = quality {
                         snapshot.meters.true_peaks = Some(quality.true_peaks);

@@ -1,0 +1,16 @@
+# Owner review before publication
+
+For every new app release, first prepare a local build for the owner to try.
+Wait for the owner's explicit approval of that tested build before putting the
+new release on GitHub. This includes prerelease/test release uploads. Do not
+replace existing public release assets or publish a tag as a substitute for
+local owner review. During local review, keep implementation commits local.
+
+Standing owner instruction, 2026-11-02:
+"I kad radiš novi release prije nego ga staviš na GitHub ja ću svaki puta probati pa ti onda odobriti da ide ako je sve u redu."
+
+VFD Digital - Black Aluminium remains the default skin. Analog VU - Silver
+Aluminium is optional and saves its selection. Its detector is fixed classical
+full-wave average VU with 300 ms movement and a scale ending at +3 VU. Only
+analog display level is adjustable; preserve the separate digital RMS/Peak
+preferences. All instruments must use actual consumed playback PCM.

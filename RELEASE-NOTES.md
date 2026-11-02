@@ -1,3 +1,13 @@
+# 1.4.0 local preview (not published)
+
+- Optional Analog VU - Silver Aluminium skin in Receiver settings. VFD Digital remains the default; saved choices persist.
+- Natural silver brushed aluminium, two illuminated needle instruments, slim smoked-glass amber display, large central volume knob. Settings has no LED.
+- Authentic fixed full-wave average detector with sine calibration and a sample-clock moving-coil model: 300 ms to 99% deflection and 1.25% overshoot. Classic current-linear scale ends at +3 VU. Independent L/R from consumed playback PCM before volume.
+- Analog skin exposes only its own VU level adjustment (default reference -8 dBFS for a sine). No RMS/Peak response selection, decay setting or fake peak-hold needle. Digital response/calibration remain saved separately and unchanged.
+- Long titles scroll; artist, title, status and technical properties use live stream data. Local standby clock and illumination controls work in both skins.
+- Local owner review required before ANY GitHub release upload/publication. This is not a published, notarized or Windows-runtime-approved release.
+- Includes the previously prepared Windows compatibility candidate; physical HP alignment feedback remains pending.
+
 # 1.3.2 candidate (not a stable release)
 
 - Fix the overstrict OpenGL 4.1 eligibility requirement. The effects use desktop OpenGL 3.3; eframe requests that version even on an RTX 4070. The owner's actual 3.3.0 NVIDIA 596.49 context is now a regression fixture.

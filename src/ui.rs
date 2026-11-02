@@ -11,11 +11,21 @@ fn minimize_screw(ui: &mut Ui, rect: Rect) -> Response {
     .on_hover_cursor(CursorIcon::PointingHand)
     .on_hover_text("Minimize to tray: live L/R meters. Click the tray icon to restore.")
 }
+fn skin_selector(ui: &mut Ui, selected: &mut Skin) {
+    ComboBox::from_label("Receiver skin")
+        .selected_text(selected.label())
+        .show_ui(ui, |ui| {
+            for skin in [Skin::VfdBlack, Skin::AnalogSilver] {
+                ui.selectable_value(selected, skin, skin.label());
+            }
+        });
+}
 pub struct RadioApp {
     updater: crate::updates::Checker,
     show_update: bool,
     update_seen: Option<crate::updates::Version>,
     materials: Materials,
+    analog: Option<crate::analog::AnalogSkin>,
     graphics: crate::graphics::Graphics,
     #[cfg(target_os = "windows")]
     receiver_window: Option<std::sync::Arc<winit::window::Window>>,
@@ -37,6 +47,7 @@ pub struct RadioApp {
     engine: Engine,
     settings: Settings,
     show_settings: bool,
+    focus_settings: bool,
     power_menu_on_launch: bool,
     power: bool,
     mute: bool,
@@ -66,9 +77,24 @@ impl RadioApp {
         fonts
             .families
             .insert(FontFamily::Name("badge".into()), vec!["badge".into()]);
+        fonts.font_data.insert(
+            "analog-display".into(),
+            FontData::from_static(include_bytes!("../assets/Rajdhani-SemiBold.ttf")).into(),
+        );
+        fonts.families.insert(
+            FontFamily::Name("analog-display".into()),
+            vec!["analog-display".into(), "Hack".into()],
+        );
         cc.egui_ctx.set_fonts(fonts);
         cc.egui_ctx.set_visuals(Visuals::dark());
-        let settings = Settings::load();
+        let mut settings = Settings::load();
+        if let Some(name) = std::env::args().skip_while(|a| a != "--skin").nth(1) {
+            settings.skin = if name == "analog-silver" {
+                Skin::AnalogSilver
+            } else {
+                Skin::VfdBlack
+            };
+        }
         if settings.start_minimized {
             cc.egui_ctx
                 .send_viewport_cmd(ViewportCommand::Minimized(true));
@@ -85,6 +111,7 @@ impl RadioApp {
             show_update: false,
             update_seen: None,
             materials,
+            analog: None,
             graphics,
             #[cfg(target_os = "windows")]
             receiver_window: cc.winit_window().cloned(),
@@ -126,6 +153,7 @@ impl RadioApp {
             engine,
             settings,
             show_settings: std::env::args().any(|a| a == "--settings"),
+            focus_settings: true,
             power_menu_on_launch: std::env::args().any(|a| a == "--power-menu"),
             meters: Meters::default(),
             last: Instant::now(),
@@ -187,7 +215,15 @@ impl RadioApp {
             })
             / 44.;
         let c = r.center();
-        let ink = if lit {
+        let analog = self.settings.skin == Skin::AnalogSilver;
+        let silver = if analog {
+            Color32::from_gray(43)
+        } else {
+            SILVER
+        };
+        let ink = if analog {
+            Color32::from_rgb(36, 31, 24)
+        } else if lit {
             CYAN
         } else {
             Color32::from_rgb(166, 173, 169)
@@ -235,7 +271,7 @@ impl RadioApp {
                         c + vec2(-5., 3.) * s,
                         c + vec2(-10., 3.) * s,
                     ],
-                    SILVER,
+                    silver,
                     Stroke::NONE,
                 ));
                 if lit {
@@ -250,7 +286,7 @@ impl RadioApp {
                             c + vec2(2. + a.cos() * 8., a.sin() * 8.) * s
                         })
                         .collect();
-                    p.add(Shape::line(arc, Stroke::new(s, SILVER)));
+                    p.add(Shape::line(arc, Stroke::new(s, silver)));
                 }
             }
             "settings" => {
@@ -261,7 +297,7 @@ impl RadioApp {
                         c + vec2(a.cos(), a.sin()) * radius * s
                     })
                     .collect();
-                p.add(Shape::convex_polygon(pts, SILVER, Stroke::NONE));
+                p.add(Shape::convex_polygon(pts, silver, Stroke::NONE));
                 p.circle_filled(c, 3.8 * s, Color32::from_gray(25));
                 p.circle_stroke(c, 3.8 * s, Stroke::new(0.6 * s, Color32::from_gray(115)));
             }
@@ -400,7 +436,7 @@ impl RadioApp {
                     ui.checkbox(&mut self.settings.lock_aspect,"Keep receiver proportions");
                     ui.small("Drag the right/bottom edge or lower-right corner to resize. Size is remembered.");
                     ui.separator();
-                    ui.label("Skin: VFD Digital - Black Aluminium");
+                    skin_selector(ui, &mut self.settings.skin);
                     self.graphics.settings(ui, &mut self.settings.graphics_quality);
                     if ui.button("Copy graphics and window diagnostics").clicked() {
                         let report=self.graphics.diagnostics(self.settings.graphics_quality);
@@ -410,11 +446,20 @@ impl RadioApp {
                     }
                     ui.horizontal(|ui| {
                         let mut brightness=self.settings.vfd_brightness*100.;
-                        if ui.add(Slider::new(&mut brightness,25.0..=100.0).text("VFD brightness · %")).changed() { self.settings.vfd_brightness=brightness/100.; }
+                        if ui.add(Slider::new(&mut brightness,25.0..=100.0).text("Instrument illumination · %")).changed() { self.settings.vfd_brightness=brightness/100.; }
                         if ui.button("Day").clicked() { self.settings.vfd_brightness=1.; }
                         if ui.button("Night").clicked() { self.settings.vfd_brightness=0.45; }
                     });
                     ui.checkbox(&mut self.settings.standby_clock,"Show local clock when stopped");
+                    if self.settings.skin == Skin::AnalogSilver {
+                        ui.label("Classic analog VU · fixed 300 ms movement · scale to +3 VU");
+                        ui.small("Full-wave average detection, sine calibrated. No RMS/Peak switching or peak-hold needle.");
+                        let mut sensitivity = -self.settings.analog_reference_dbfs;
+                        if ui.add(Slider::new(&mut sensitivity,0.0..=24.0).step_by(0.5).text("Analog VU level · dB")).changed() {
+                            self.settings.analog_reference_dbfs = -sensitivity;
+                        }
+                        ui.small(format!("0 VU = {:.1} dBFS for a sine wave. Display sensitivity only; audio is unchanged.", self.settings.analog_reference_dbfs));
+                    } else {
                     ComboBox::from_label("VU response").selected_text(self.settings.vu_response.label()).show_ui(ui, |ui| {
                         for response in [crate::dsp::VuResponse::SmoothRms, crate::dsp::VuResponse::FastRms, crate::dsp::VuResponse::Peak] {
                             ui.selectable_value(&mut self.settings.vu_response, response, response.label());
@@ -434,6 +479,7 @@ impl RadioApp {
                         crate::dsp::VuResponse::Peak => "Peak: immediate response to short sample peaks, with controlled decay.",
                     });
                     ui.small("Peak hold remembers the highest level of the SAME selected detector for 2 seconds.\nThe scale is relative to the selected reference; red segments alone do not mean clipping.");
+                    }
                     CollapsingHeader::new("Live signal measurements").show(ui, |ui| {
                         let snap = self.engine.state.lock().unwrap().clone();
                         let m = &snap.meters;
@@ -449,9 +495,11 @@ impl RadioApp {
                         } else { ui.label("True Peak: unavailable"); }
                         ui.small("Measured from playback PCM before volume. No loudness normalization or audio processing. Silence has no finite LUFS value.");
                     });
-                    ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
+                    if self.settings.skin == Skin::VfdBlack {
+                        ui.checkbox(&mut self.settings.spectrum,"Spectrum analyzer");
                     ui.add(Slider::new(&mut self.settings.hd_kbps,64..=512).text("HD badge lights from · kbps"));
                     ui.small("Badge only. Audio always uses the original stream quality; this does not limit bitrate.\nHD SOUND is a Radio Crash badge, not a standardized HD codec. Meters are measured before volume.");
+                    }
                     });
                     ui.separator();
                     ui.label("Automatic update checks are always on");
@@ -470,6 +518,11 @@ impl RadioApp {
                 });
             },
         );
+        if std::mem::take(&mut self.focus_settings) {
+            let id = ViewportId::from_hash_of("receiver-settings");
+            ctx.send_viewport_cmd_to(id, ViewportCommand::Visible(true));
+            ctx.send_viewport_cmd_to(id, ViewportCommand::Focus);
+        }
         if closed {
             self.show_settings = false;
         }
@@ -576,9 +629,14 @@ impl eframe::App for RadioApp {
             tray.update(
                 &snapshot.meters,
                 self.engine.running(),
-                self.settings.vu_reference_dbfs,
+                if self.settings.skin == Skin::AnalogSilver {
+                    self.settings.analog_reference_dbfs
+                } else {
+                    self.settings.vu_reference_dbfs
+                },
                 self.settings.fast_vu,
                 self.settings.vu_response,
+                self.settings.skin == Skin::AnalogSilver,
             );
             tray.poll()
         } else {
@@ -594,6 +652,7 @@ impl eframe::App for RadioApp {
                 } else {
                     self.updater.request();
                     self.show_settings = true;
+                    self.focus_settings = true;
                 }
             }
             platform::TrayAction::None => {}
@@ -690,9 +749,18 @@ impl eframe::App for RadioApp {
         let rect = |x, y, w, h| panel.rect([x, y, w, h]);
         let p = ui.painter().clone();
         p.rect_filled(area, 0., Color32::TRANSPARENT);
-        self.materials.paint(&p, rect(0., 0., 1200., 440.));
-        self.materials
-            .logo(&p, rect(94., 49., 205., 205. * 67. / 900.));
+        let analog = self.settings.skin == Skin::AnalogSilver;
+        let controls = panel::Controls::for_skin(self.settings.skin);
+        let hd = snap.bitrate.is_some_and(|v| v >= self.settings.hd_kbps) && self.engine.running();
+        if analog {
+            self.analog
+                .get_or_insert_with(|| crate::analog::AnalogSkin::new(&ctx))
+                .background(&p, panel);
+        } else {
+            self.materials.paint(&p, rect(0., 0., 1200., 440.));
+            self.materials
+                .logo(&p, rect(94., 49., 205., 205. * 67. / 900.));
+        }
         let screw = minimize_screw(ui, panel.rect(panel::MINIMIZE));
         if screw.clicked() {
             self.minimize_to_tray(&ctx);
@@ -722,6 +790,7 @@ impl eframe::App for RadioApp {
             ui.separator();
             if ui.button("Receiver settings").clicked() {
                 self.show_settings = true;
+                self.focus_settings = true;
                 ui.close();
             }
             if ui
@@ -742,338 +811,365 @@ impl eframe::App for RadioApp {
                 ctx.send_viewport_cmd(ViewportCommand::Close);
             }
         });
-        // Coordinates below map the live phosphor plane inside the photographed glass aperture.
-        let pt = |x: f32, y: f32| {
-            base + vec2(
-                70. + (x - 48.) * 1060. / 1104.,
-                99. + (y - 111.) * 136. / 175.,
-            ) * scale
-        };
-        let rect = |x: f32, y: f32, w: f32, h: f32| {
-            Rect::from_min_size(pt(x, y), vec2(w * 1060. / 1104., h * 136. / 175.) * scale)
-        };
-        let scale = scale * 0.9;
         let standby_clock = self.settings.standby_clock && !self.engine.running();
-        let mut p = p.clone();
-        p.multiply_opacity(crate::settings::display_brightness(
-            self.settings.vfd_brightness,
-        ));
-        for x in [443., 820.] {
-            p.line_segment(
-                [pt(x, 129.), pt(x, 269.)],
-                Stroke::new(0.6 * scale, Color32::from_rgb(31, 62, 63)),
+        if analog {
+            self.analog.as_mut().unwrap().instruments(
+                &p,
+                panel,
+                &snap,
+                &self.settings,
+                self.engine.running(),
+                self.power,
+                &self.clock,
+                self.track_changed.elapsed().as_secs_f32(),
+                dt,
+                self.mute,
             );
-        }
-        let muted_display = if self.power || standby_clock {
-            CYAN
+            self.graphics.paint(
+                ui.painter(),
+                panel.rect(crate::analog::GLASS),
+                true,
+                self.settings.vfd_brightness,
+                0.,
+                self.settings.volume,
+            );
         } else {
-            DIM
-        };
-        text(
-            &p,
-            pt(70., 129.),
-            "STEREO LEVEL",
-            9.2 * scale,
-            muted_display.gamma_multiply(0.7),
-        );
-        text(
-            &p,
-            pt(348., 129.),
-            "PEAK HOLD",
-            8.5 * scale,
-            Color32::from_rgb(202, 172, 69),
-        );
-        for (db, caption) in [
-            (-40., "−40"),
-            (-12., "−12"),
-            (-8., "−8"),
-            (-4., "−4"),
-            (0., "0"),
-            (4., "+4"),
-            (8., "+8"),
-            (12., "+12"),
-            (18., "+18"),
-        ] {
-            let x = 98. + crate::dsp::vu_position(db) * 312.;
-            let color = vu_color(db);
-            p.text(
-                pt(x + 3., 153.),
-                Align2::CENTER_TOP,
-                caption,
-                FontId::monospace(9.4 * scale),
-                color,
-            );
-            p.line_segment(
-                [pt(x + 3., 169.), pt(x + 3., 175.)],
-                Stroke::new(
-                    if db == 0. { 1.3 * scale } else { 0.7 * scale },
-                    color.gamma_multiply(0.65),
-                ),
-            );
-        }
-        text(&p, pt(70., 153.), "dB", 8.5 * scale, DIM);
-        for c in 0..2 {
-            let y = 187. + c as f32 * 38.;
+            // Coordinates below map the live phosphor plane inside the photographed glass aperture.
+            let pt = |x: f32, y: f32| {
+                base + vec2(
+                    70. + (x - 48.) * 1060. / 1104.,
+                    99. + (y - 111.) * 136. / 175.,
+                ) * scale
+            };
+            let rect = |x: f32, y: f32, w: f32, h: f32| {
+                Rect::from_min_size(pt(x, y), vec2(w * 1060. / 1104., h * 136. / 175.) * scale)
+            };
+            let scale = scale * 0.9;
+            let standby_clock = self.settings.standby_clock && !self.engine.running();
+            let mut p = p.clone();
+            p.multiply_opacity(crate::settings::display_brightness(
+                self.settings.vfd_brightness,
+            ));
+            for x in [443., 820.] {
+                p.line_segment(
+                    [pt(x, 129.), pt(x, 269.)],
+                    Stroke::new(0.6 * scale, Color32::from_rgb(31, 62, 63)),
+                );
+            }
+            let muted_display = if self.power || standby_clock {
+                CYAN
+            } else {
+                DIM
+            };
             text(
                 &p,
-                pt(70., y - 2.),
-                if c == 0 { "L" } else { "R" },
-                17. * scale,
-                muted_display,
+                pt(70., 129.),
+                "STEREO LEVEL",
+                9.2 * scale,
+                muted_display.gamma_multiply(0.7),
             );
-            let level =
-                crate::dsp::vu_segment_index(self.meters.rms[c], self.settings.vu_reference_dbfs);
-            let held = crate::dsp::vu_segment_index(
-                snap.meters.vu(self.settings.vu_response).held[c],
-                self.settings.vu_reference_dbfs,
+            text(
+                &p,
+                pt(348., 129.),
+                "PEAK HOLD",
+                8.5 * scale,
+                Color32::from_rgb(202, 172, 69),
             );
-            for (i, db) in crate::dsp::VU_SCALE.iter().enumerate() {
-                let x = 98. + i as f32 * 8.;
-                // Keep the approved full, zone-colored filament in the L/R
-                // row. Hold is the maximum of the SAME selected detector.
-                let on = level.is_some_and(|last| i <= last) || held == Some(i);
-                for row in 0..2 {
-                    segment_with_color(
-                        &p,
-                        rect(x, y + row as f32 * 5.3, 6., 3.7),
-                        on,
-                        vu_color(*db),
-                    );
+            for (db, caption) in [
+                (-40., "−40"),
+                (-12., "−12"),
+                (-8., "−8"),
+                (-4., "−4"),
+                (0., "0"),
+                (4., "+4"),
+                (8., "+8"),
+                (12., "+12"),
+                (18., "+18"),
+            ] {
+                let x = 98. + crate::dsp::vu_position(db) * 312.;
+                let color = vu_color(db);
+                p.text(
+                    pt(x + 3., 153.),
+                    Align2::CENTER_TOP,
+                    caption,
+                    FontId::monospace(9.4 * scale),
+                    color,
+                );
+                p.line_segment(
+                    [pt(x + 3., 169.), pt(x + 3., 175.)],
+                    Stroke::new(
+                        if db == 0. { 1.3 * scale } else { 0.7 * scale },
+                        color.gamma_multiply(0.65),
+                    ),
+                );
+            }
+            text(&p, pt(70., 153.), "dB", 8.5 * scale, DIM);
+            for c in 0..2 {
+                let y = 187. + c as f32 * 38.;
+                text(
+                    &p,
+                    pt(70., y - 2.),
+                    if c == 0 { "L" } else { "R" },
+                    17. * scale,
+                    muted_display,
+                );
+                let level = crate::dsp::vu_segment_index(
+                    self.meters.rms[c],
+                    self.settings.vu_reference_dbfs,
+                );
+                let held = crate::dsp::vu_segment_index(
+                    snap.meters.vu(self.settings.vu_response).held[c],
+                    self.settings.vu_reference_dbfs,
+                );
+                for (i, db) in crate::dsp::VU_SCALE.iter().enumerate() {
+                    let x = 98. + i as f32 * 8.;
+                    // Keep the approved full, zone-colored filament in the L/R
+                    // row. Hold is the maximum of the SAME selected detector.
+                    let on = level.is_some_and(|last| i <= last) || held == Some(i);
+                    for row in 0..2 {
+                        segment_with_color(
+                            &p,
+                            rect(x, y + row as f32 * 5.3, 6., 3.7),
+                            on,
+                            vu_color(*db),
+                        );
+                    }
                 }
             }
-        }
-        text(
-            &p,
-            pt(99., 257.),
-            match self.settings.vu_response {
-                crate::dsp::VuResponse::SmoothRms => "RMS",
-                crate::dsp::VuResponse::FastRms => "FAST RMS",
-                crate::dsp::VuResponse::Peak => "PEAK",
-            },
-            7.8 * scale,
-            DIM,
-        );
-        let calibration = if self.settings.vu_reference_dbfs == 0. {
-            "DIGITAL dBFS".to_owned()
-        } else {
-            format!("0 VU = {} dBFS", self.settings.vu_reference_dbfs)
-        };
-        text(&p, pt(245., 257.), &calibration, 7.8 * scale, DIM);
-        let status = if standby_clock {
-            "STANDBY"
-        } else if !self.power {
-            "POWER OFF"
-        } else {
-            &snap.status
-        };
-        text(
-            &p,
-            pt(466., 129.),
-            if standby_clock {
-                "LOCAL TIME"
-            } else {
-                "NOW PLAYING"
-            },
-            9.5 * scale,
-            muted_display.gamma_multiply(0.7),
-        );
-        let status_size = if status.len() > 10 { 8.5 } else { 10. };
-        p.text(
-            pt(797., 129.),
-            Align2::RIGHT_TOP,
-            status,
-            FontId::monospace(status_size * scale),
-            muted_display,
-        );
-        if status == "ON AIR" {
-            p.circle_filled(pt(732., 134.), 2.5 * scale, CYAN);
-            p.circle_filled(
-                pt(732., 134.),
-                4.6 * scale,
-                Color32::from_rgba_unmultiplied(80, 245, 245, 16),
-            );
-        }
-        let artist = if snap.artist.is_empty() {
-            "RADIO CRASH"
-        } else {
-            &snap.artist
-        };
-        let title = if snap.title.is_empty() {
-            if self.engine.running() {
-                "Waiting for metadata"
-            } else {
-                "Good music lives on"
-            }
-        } else {
-            &snap.title
-        };
-        if standby_clock {
-            let font = FontId::new(43. * scale, FontFamily::Name("vfd".into()));
-            let center = pt(631., 158.);
-            for offset in [vec2(-0.7, 0.), vec2(0.7, 0.), vec2(0., -0.7), vec2(0., 0.7)] {
-                p.text(
-                    center + offset * scale,
-                    Align2::CENTER_TOP,
-                    &self.clock.time,
-                    font.clone(),
-                    Color32::from_rgba_unmultiplied(65, 232, 245, 25),
-                );
-            }
-            p.text(
-                center,
-                Align2::CENTER_TOP,
-                &self.clock.time,
-                font,
-                muted_display,
-            );
-            p.text(
-                pt(631., 218.),
-                Align2::CENTER_TOP,
-                &self.clock.date,
-                FontId::monospace(11. * scale),
-                CYAN.gamma_multiply(0.75),
-            );
-        } else {
-            self.marquee(&p, rect(466., 158., 331., 34.), artist, 26. * scale);
-            self.marquee(&p, rect(466., 201., 331., 28.), title, 20.5 * scale);
-        }
-        p.line_segment(
-            [pt(465., 242.), pt(799., 242.)],
-            Stroke::new(0.6 * scale, DIM),
-        );
-        let tech = format!(
-            "{}   {}   {}   {}",
-            snap.bitrate
-                .map(|v| format!("{v} kbps"))
-                .unwrap_or("- kbps".into()),
-            if snap.codec.is_empty() {
-                "-"
-            } else {
-                &snap.codec
-            },
-            if snap.rate > 0 {
-                format!("{:.1} kHz", snap.rate as f32 / 1000.)
-            } else {
-                "- kHz".into()
-            },
-            match snap.channels {
-                1 => "MONO",
-                2 => "STEREO",
-                _ => "-",
-            }
-        );
-        text(
-            &p,
-            pt(467., 255.),
-            if standby_clock {
-                "RADIO CRASH  ·  SINCE 1986"
-            } else {
-                &tech
-            },
-            10. * scale,
-            muted_display,
-        );
-        text(
-            &p,
-            pt(842., 129.),
-            "SPECTRUM ANALYZER",
-            9. * scale,
-            muted_display.gamma_multiply(0.7),
-        );
-        text(&p, pt(1117., 129.), "Hz", 8. * scale, DIM);
-        for (y, l) in [(148., "0"), (179., "−20"), (210., "−40"), (241., "−60")] {
-            p.text(
-                pt(850., y),
-                Align2::RIGHT_TOP,
-                l,
-                FontId::monospace(7. * scale),
+            text(
+                &p,
+                pt(99., 257.),
+                match self.settings.vu_response {
+                    crate::dsp::VuResponse::SmoothRms => "RMS",
+                    crate::dsp::VuResponse::FastRms => "FAST RMS",
+                    crate::dsp::VuResponse::Peak => "PEAK",
+                },
+                7.8 * scale,
                 DIM,
             );
-        }
-        for i in 0..10 {
-            let x = 860. + i as f32 * 27.;
-            for j in 0..20 {
-                segment(
-                    &p,
-                    rect(x, 243. - j as f32 * 4.6, 17., 2.9),
-                    self.settings.spectrum
-                        && snap.meters.available[i]
-                        && self.meters.spectrum[i] > -60. + j as f32 * 3.,
-                    j,
-                    20,
+            let calibration = if self.settings.vu_reference_dbfs == 0. {
+                "DIGITAL dBFS".to_owned()
+            } else {
+                format!("0 VU = {} dBFS", self.settings.vu_reference_dbfs)
+            };
+            text(&p, pt(245., 257.), &calibration, 7.8 * scale, DIM);
+            let status = if standby_clock {
+                "STANDBY"
+            } else if !self.power {
+                "POWER OFF"
+            } else {
+                &snap.status
+            };
+            text(
+                &p,
+                pt(466., 129.),
+                if standby_clock {
+                    "LOCAL TIME"
+                } else {
+                    "NOW PLAYING"
+                },
+                9.5 * scale,
+                muted_display.gamma_multiply(0.7),
+            );
+            let status_size = if status.len() > 10 { 8.5 } else { 10. };
+            p.text(
+                pt(797., 129.),
+                Align2::RIGHT_TOP,
+                status,
+                FontId::monospace(status_size * scale),
+                muted_display,
+            );
+            if status == "ON AIR" {
+                p.circle_filled(pt(732., 134.), 2.5 * scale, CYAN);
+                p.circle_filled(
+                    pt(732., 134.),
+                    4.6 * scale,
+                    Color32::from_rgba_unmultiplied(80, 245, 245, 16),
                 );
             }
-            p.text(
-                pt(x + 8.5, 257.),
-                Align2::CENTER_TOP,
-                [
-                    "32", "64", "125", "250", "500", "1k", "2k", "4k", "8k", "16k",
-                ][i],
-                FontId::monospace(8.3 * scale),
-                if snap.meters.available[i] {
-                    CYAN.gamma_multiply(0.85)
+            let artist = if snap.artist.is_empty() {
+                "RADIO CRASH"
+            } else {
+                &snap.artist
+            };
+            let title = if snap.title.is_empty() {
+                if self.engine.running() {
+                    "Waiting for metadata"
+                } else {
+                    "Good music lives on"
+                }
+            } else {
+                &snap.title
+            };
+            if standby_clock {
+                let font = FontId::new(43. * scale, FontFamily::Name("vfd".into()));
+                let center = pt(631., 158.);
+                for offset in [vec2(-0.7, 0.), vec2(0.7, 0.), vec2(0., -0.7), vec2(0., 0.7)] {
+                    p.text(
+                        center + offset * scale,
+                        Align2::CENTER_TOP,
+                        &self.clock.time,
+                        font.clone(),
+                        Color32::from_rgba_unmultiplied(65, 232, 245, 25),
+                    );
+                }
+                p.text(
+                    center,
+                    Align2::CENTER_TOP,
+                    &self.clock.time,
+                    font,
+                    muted_display,
+                );
+                p.text(
+                    pt(631., 218.),
+                    Align2::CENTER_TOP,
+                    &self.clock.date,
+                    FontId::monospace(11. * scale),
+                    CYAN.gamma_multiply(0.75),
+                );
+            } else {
+                self.marquee(&p, rect(466., 158., 331., 34.), artist, 26. * scale);
+                self.marquee(&p, rect(466., 201., 331., 28.), title, 20.5 * scale);
+            }
+            p.line_segment(
+                [pt(465., 242.), pt(799., 242.)],
+                Stroke::new(0.6 * scale, DIM),
+            );
+            let tech = format!(
+                "{}   {}   {}   {}",
+                snap.bitrate
+                    .map(|v| format!("{v} kbps"))
+                    .unwrap_or("- kbps".into()),
+                if snap.codec.is_empty() {
+                    "-"
+                } else {
+                    &snap.codec
+                },
+                if snap.rate > 0 {
+                    format!("{:.1} kHz", snap.rate as f32 / 1000.)
+                } else {
+                    "- kHz".into()
+                },
+                match snap.channels {
+                    1 => "MONO",
+                    2 => "STEREO",
+                    _ => "-",
+                }
+            );
+            text(
+                &p,
+                pt(467., 255.),
+                if standby_clock {
+                    "RADIO CRASH  ·  SINCE 1986"
+                } else {
+                    &tech
+                },
+                10. * scale,
+                muted_display,
+            );
+            text(
+                &p,
+                pt(842., 129.),
+                "SPECTRUM ANALYZER",
+                9. * scale,
+                muted_display.gamma_multiply(0.7),
+            );
+            text(&p, pt(1117., 129.), "Hz", 8. * scale, DIM);
+            for (y, l) in [(148., "0"), (179., "−20"), (210., "−40"), (241., "−60")] {
+                p.text(
+                    pt(850., y),
+                    Align2::RIGHT_TOP,
+                    l,
+                    FontId::monospace(7. * scale),
+                    DIM,
+                );
+            }
+            for i in 0..10 {
+                let x = 860. + i as f32 * 27.;
+                for j in 0..20 {
+                    segment(
+                        &p,
+                        rect(x, 243. - j as f32 * 4.6, 17., 2.9),
+                        self.settings.spectrum
+                            && snap.meters.available[i]
+                            && self.meters.spectrum[i] > -60. + j as f32 * 3.,
+                        j,
+                        20,
+                    );
+                }
+                p.text(
+                    pt(x + 8.5, 257.),
+                    Align2::CENTER_TOP,
+                    [
+                        "32", "64", "125", "250", "500", "1k", "2k", "4k", "8k", "16k",
+                    ][i],
+                    FontId::monospace(8.3 * scale),
+                    if snap.meters.available[i] {
+                        CYAN.gamma_multiply(0.85)
+                    } else {
+                        DIM
+                    },
+                );
+            }
+            // Fine optical reflections are composited over the emitted phosphor, keeping it behind glass.
+            gradient(
+                &p,
+                rect(51., 114., 1095., 46.),
+                Color32::from_rgba_unmultiplied(154, 192, 198, 9),
+                Color32::TRANSPARENT,
+            );
+            text(
+                &p,
+                pt(466., 273.),
+                "HD SOUND",
+                7.7 * scale,
+                if hd {
+                    Color32::from_rgb(83, 228, 207)
                 } else {
                     DIM
                 },
             );
+            p.text(
+                pt(798., 273.),
+                Align2::RIGHT_TOP,
+                if self.mute {
+                    "MUTED".into()
+                } else {
+                    format!("VOL {:02}%", (self.settings.volume * 100.).round() as u32)
+                },
+                FontId::monospace(7.7 * scale),
+                if self.mute {
+                    Color32::from_rgb(238, 176, 77)
+                } else {
+                    DIM
+                },
+            );
+            self.graphics.paint(
+                ui.painter(),
+                panel.rect([70., 99., 1060., 136.]),
+                true,
+                self.settings.vfd_brightness,
+                0.,
+                self.settings.volume,
+            );
         }
-        // Fine optical reflections are composited over the emitted phosphor, keeping it behind glass.
-        gradient(
-            &p,
-            rect(51., 114., 1095., 46.),
-            Color32::from_rgba_unmultiplied(154, 192, 198, 9),
-            Color32::TRANSPARENT,
-        );
-        let hd = snap.bitrate.is_some_and(|v| v >= self.settings.hd_kbps) && self.engine.running();
-        text(
-            &p,
-            pt(466., 273.),
-            "HD SOUND",
-            7.7 * scale,
-            if hd {
-                Color32::from_rgb(83, 228, 207)
-            } else {
-                DIM
-            },
-        );
-        p.text(
-            pt(798., 273.),
-            Align2::RIGHT_TOP,
-            if self.mute {
-                "MUTED".into()
-            } else {
-                format!("VOL {:02}%", (self.settings.volume * 100.).round() as u32)
-            },
-            FontId::monospace(7.7 * scale),
-            if self.mute {
-                Color32::from_rgb(238, 176, 77)
-            } else {
-                DIM
-            },
-        );
-        self.graphics.paint(
-            ui.painter(),
-            panel.rect([70., 99., 1060., 136.]),
-            true,
-            self.settings.vfd_brightness,
-            0.,
-            self.settings.volume,
-        );
         // The photographed hardware surfaces are native interactive controls, never baked indicators.
         let p = ui.painter().clone();
         let scale = (area.width() / 1200.).min(area.height() / 440.);
         let pt = |x: f32, y: f32| base + vec2(x, y) * scale;
         let rect =
             |x: f32, y: f32, w: f32, h: f32| Rect::from_min_size(pt(x, y), vec2(w, h) * scale);
-        let badge = rect(458., 307., 164., 43.);
-        hd_radio(
-            &p,
-            badge,
-            self.power,
-            hd && snap.status == "ON AIR" && self.power,
-        );
-        ui.interact(badge,Id::unique("hd-radio-quality"),Sense::hover()).on_hover_text(format!("Radio Crash oznaka kvalitete streama. Pun sjaj od {} kbps. Internetski radio; nije HD Radio/IBOC prijamnik.",self.settings.hd_kbps));
-        let power = self.button(ui, panel.rect(panel::POWER), "power", self.power);
+        if !analog {
+            let badge = rect(458., 307., 164., 43.);
+            hd_radio(
+                &p,
+                badge,
+                self.power,
+                hd && snap.status == "ON AIR" && self.power,
+            );
+            ui.interact(badge,Id::unique("hd-radio-quality"),Sense::hover()).on_hover_text(format!("Radio Crash oznaka kvalitete streama. Pun sjaj od {} kbps. Internetski radio; nije HD Radio/IBOC prijamnik.",self.settings.hd_kbps));
+        }
+        let power = self.button(ui, panel.rect(controls.power), "power", self.power);
         if std::mem::take(&mut self.power_menu_on_launch) {
             Popup::open_id(&ctx, Popup::default_response_id(&power));
         }
@@ -1087,7 +1183,7 @@ impl eframe::App for RadioApp {
         }
         let running = self.engine.running();
         if self
-            .button(ui, panel.rect(panel::PLAY), "transport", running)
+            .button(ui, panel.rect(controls.play), "transport", running)
             .clicked()
             && self.power
         {
@@ -1098,16 +1194,16 @@ impl eframe::App for RadioApp {
             }
         }
         if self
-            .button(ui, panel.rect(panel::MUTE), "mute", self.mute)
+            .button(ui, panel.rect(controls.mute), "mute", self.mute)
             .clicked()
         {
             self.mute = !self.mute;
         }
-        let center = pt(911., 319.);
-        let radius = 54. * scale;
+        let center = pt(controls.knob_center[0], controls.knob_center[1]);
+        let radius = controls.knob_radius * scale;
         let knob = ui
             .interact(
-                panel.volume(),
+                panel.rect(controls.volume),
                 Id::unique("volume"),
                 Sense::click_and_drag(),
             )
@@ -1133,13 +1229,21 @@ impl eframe::App for RadioApp {
         let d = vec2(a.cos(), a.sin());
         p.line_segment(
             [center + d * radius * 0.72, center + d * radius * 0.87],
-            Stroke::new(1.4 * scale, Color32::from_rgb(213, 214, 193)),
+            Stroke::new(
+                1.4 * scale,
+                if analog {
+                    Color32::from_gray(26)
+                } else {
+                    Color32::from_rgb(213, 214, 193)
+                },
+            ),
         );
         if self
-            .button(ui, panel.rect(panel::SETTINGS), "settings", false)
+            .button(ui, panel.rect(controls.settings), "settings", false)
             .clicked()
         {
             self.show_settings = true;
+            self.focus_settings = true;
         }
         if !snap.error.is_empty() {
             self.error = snap.error.clone();
@@ -1168,14 +1272,16 @@ impl eframe::App for RadioApp {
         } else {
             0.
         };
-        self.graphics.paint(
-            ui.painter(),
-            panel.rect([0., 0., 1200., 440.]),
-            false,
-            self.settings.vfd_brightness,
-            signal,
-            self.settings.volume,
-        );
+        if !analog {
+            self.graphics.paint(
+                ui.painter(),
+                panel.rect([0., 0., 1200., 440.]),
+                false,
+                self.settings.vfd_brightness,
+                signal,
+                self.settings.volume,
+            );
+        }
         self.window_controls(ui);
         if self.show_settings {
             self.settings(&ctx);
@@ -1213,6 +1319,63 @@ impl eframe::App for RadioApp {
 #[cfg(test)]
 mod interaction_tests {
     use super::*;
+    #[test]
+    fn skin_menu_selects_analog_then_restores_the_original_skin() {
+        fn draw(ctx: &Context, skin: &mut Skin, events: Vec<Event>) -> FullOutput {
+            let mut out = ctx.run_ui(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(700., 400.))),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    skin_selector(ui, skin);
+                },
+            );
+            out.textures_delta.clear();
+            out
+        }
+        fn label(out: &FullOutput, text: &str) -> Pos2 {
+            out.shapes
+                .iter()
+                .find_map(|s| match &s.shape {
+                    Shape::Text(t) if t.galley.text() == text => {
+                        Some(t.pos + t.galley.size() * 0.5)
+                    }
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("missing skin choice: {text}"))
+        }
+        fn click(ctx: &Context, skin: &mut Skin, point: Pos2) {
+            for pressed in [true, false] {
+                draw(
+                    ctx,
+                    skin,
+                    vec![
+                        Event::PointerMoved(point),
+                        Event::PointerButton {
+                            pos: point,
+                            button: PointerButton::Primary,
+                            pressed,
+                            modifiers: Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+        }
+        let ctx = Context::default();
+        let mut selected = Skin::VfdBlack;
+        for next in [Skin::AnalogSilver, Skin::VfdBlack] {
+            draw(&ctx, &mut selected, vec![]);
+            let out = draw(&ctx, &mut selected, vec![]);
+            let point = label(&out, selected.label());
+            click(&ctx, &mut selected, point);
+            let out = draw(&ctx, &mut selected, vec![]);
+            let point = label(&out, next.label());
+            click(&ctx, &mut selected, point);
+            assert_eq!(selected, next);
+        }
+    }
     #[test]
     fn left_screw_accepts_primary_click_at_compact_and_large_sizes() {
         for width in [560., 640., 780., 1200.] {

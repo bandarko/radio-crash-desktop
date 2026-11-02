@@ -1,8 +1,10 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+mod analog;
 mod audio;
 mod audio_resample;
 mod clock_face;
 mod dsp;
+mod dsp_analog;
 mod graphics;
 mod metadata;
 mod panel;
@@ -14,6 +16,24 @@ mod ui;
 mod updates;
 fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    if let Some(seconds) = std::env::args().skip_while(|a| a != "--audit-vu").nth(1) {
+        let seconds = seconds.parse::<u64>()?.clamp(1, 120);
+        let mut engine = audio::Engine::new();
+        engine.volume(0.);
+        engine.start(settings::Settings::default());
+        let start = std::time::Instant::now();
+        let mut readings = Vec::with_capacity(seconds as usize * 50);
+        while start.elapsed().as_secs() < seconds {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            let s = engine.state.lock().unwrap();
+            if s.status == "ON AIR" {
+                readings.push(serde_json::json!({"seconds":start.elapsed().as_secs_f32(),"dbfs":s.meters.analog.levels()}));
+            }
+        }
+        engine.stop();
+        println!("{}", serde_json::to_string(&readings)?);
+        return Ok(());
+    }
     if std::env::args().any(|a| a == "--check-update") {
         println!("{}", updates::check_now()?);
         return Ok(());
@@ -35,12 +55,13 @@ fn main() -> anyhow::Result<()> {
             std::thread::sleep(std::time::Duration::from_secs(1));
             let s = engine.state.lock().unwrap();
             println!(
-                "{} {} {:?} {} Hz {} ch | RMS {:?} | RMS HOLD {:?} | FAST RMS {:?} HOLD {:?} | PEAK METER {:?} HOLD {:?} | TP HOLD {:?} | TRUE PEAK {:?} | SAMPLE PEAK {:?} | LUFS M {:?} S {:?} | FFT {:?} | {} / {} | {}",
+                "{} {} {:?} {} Hz {} ch | ANALOG AVG {:?} | RMS {:?} | RMS HOLD {:?} | FAST RMS {:?} HOLD {:?} | PEAK METER {:?} HOLD {:?} | TP HOLD {:?} | TRUE PEAK {:?} | SAMPLE PEAK {:?} | LUFS M {:?} S {:?} | FFT {:?} | {} / {} | {}",
                 s.status,
                 s.codec,
                 s.bitrate,
                 s.rate,
                 s.channels,
+                s.meters.analog.levels(),
                 s.meters.rms,
                 s.meters.held_rms,
                 s.meters.fast_rms.level,
@@ -79,7 +100,9 @@ fn main() -> anyhow::Result<()> {
             .with_inner_size(size)
             .with_min_inner_size([560., 200.])
             .with_resizable(true)
-            .with_title(if std::env::args().any(|a| a == "--qa-exit-after") {
+            .with_title(if settings::Settings::local_preview() {
+                "Radio Crash Desktop · Analog preview"
+            } else if std::env::args().any(|a| a == "--qa-exit-after") {
                 "Radio Crash Desktop · temporary graphics test"
             } else {
                 "Radio Crash Desktop"

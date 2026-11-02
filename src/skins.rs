@@ -3,6 +3,22 @@ use eframe::egui::*;
 pub const CYAN: Color32 = Color32::from_rgb(71, 237, 249);
 pub const DIM: Color32 = Color32::from_rgb(20, 63, 66);
 pub const SILVER: Color32 = Color32::from_rgb(190, 189, 181);
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Skin {
+    AnalogSilver,
+    #[default]
+    #[serde(other)]
+    VfdBlack,
+}
+impl Skin {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::VfdBlack => "VFD Digital - Black Aluminium",
+            Self::AnalogSilver => "Analog VU - Silver Aluminium",
+        }
+    }
+}
 pub struct Materials {
     left: TextureHandle,
     right: TextureHandle,

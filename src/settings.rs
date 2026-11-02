@@ -19,6 +19,8 @@ pub struct Settings {
     pub start_minimized: bool,
     pub minimize_to_tray: bool,
     pub spectrum: bool,
+    pub skin: crate::skins::Skin,
+    pub analog_reference_dbfs: f32,
     pub vfd_brightness: f32,
     pub graphics_quality: crate::graphics::Quality,
     pub standby_clock: bool,
@@ -42,6 +44,8 @@ impl Default for Settings {
             start_minimized: false,
             minimize_to_tray: false,
             spectrum: true,
+            skin: crate::skins::Skin::VfdBlack,
+            analog_reference_dbfs: crate::dsp_analog::DEFAULT_REFERENCE_DBFS,
             vfd_brightness: 1.,
             graphics_quality: crate::graphics::Quality::Auto,
             standby_clock: true,
@@ -57,6 +61,16 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    pub fn local_preview() -> bool {
+        std::env::current_exe()
+            .ok()
+            .and_then(|path| {
+                path.parent()?
+                    .parent()
+                    .map(|p| p.join("Resources/LOCAL-PREVIEW"))
+            })
+            .is_some_and(|p| p.is_file())
+    }
     pub fn path() -> PathBuf {
         // Isolated configuration for QA/portable launches, never affects the
         // normal installed app unless explicitly set by the launching process.
@@ -66,10 +80,15 @@ impl Settings {
         {
             return path.join("settings.json");
         }
-        directories::ProjectDirs::from("net", "RadioCrash", "RadioCrashDesktop")
+        let root = directories::ProjectDirs::from("net", "RadioCrash", "RadioCrashDesktop")
             .expect("configuration directory")
             .config_dir()
-            .join("settings.json")
+            .to_path_buf();
+        if Self::local_preview() {
+            root.join("analog-preview/settings.json")
+        } else {
+            root.join("settings.json")
+        }
     }
     pub fn load() -> Self {
         let mut s: Self = std::fs::read(Self::path())
@@ -78,6 +97,11 @@ impl Settings {
             .unwrap_or_default();
         s.volume = s.volume.clamp(0., 1.);
         s.vfd_brightness = display_brightness(s.vfd_brightness);
+        s.analog_reference_dbfs = if s.analog_reference_dbfs.is_finite() {
+            s.analog_reference_dbfs.clamp(-24., 0.)
+        } else {
+            crate::dsp_analog::DEFAULT_REFERENCE_DBFS
+        };
         s.vu_reference_dbfs = if s.vu_reference_dbfs.is_finite() {
             s.vu_reference_dbfs.clamp(-24., 0.)
         } else {
@@ -148,6 +172,28 @@ pub fn window_size(width: f32, height: f32, lock: bool) -> [f32; 2] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn optional_analog_skin_preserves_digital_choices_and_defaults() {
+        use crate::{dsp::VuResponse, skins::Skin};
+        assert_eq!(Settings::default().skin, Skin::VfdBlack);
+        let legacy =
+            Settings::decode(br#"{"vu_response":"peak","vu_reference_dbfs":-18,"volume":0.39}"#)
+                .unwrap();
+        assert_eq!(legacy.skin, Skin::VfdBlack);
+        let mut analog = legacy.clone();
+        analog.skin = Skin::AnalogSilver;
+        analog.analog_reference_dbfs = -10.;
+        let restored = Settings::decode(&serde_json::to_vec(&analog).unwrap()).unwrap();
+        assert_eq!(restored.skin, Skin::AnalogSilver);
+        assert_eq!(restored.analog_reference_dbfs, -10.);
+        assert_eq!(restored.vu_response, VuResponse::Peak);
+        assert_eq!(restored.vu_reference_dbfs, -18.);
+        assert_eq!(restored.volume, 0.39);
+        assert_eq!(
+            Settings::decode(br#"{"skin":"future"}"#).unwrap().skin,
+            Skin::VfdBlack
+        );
+    }
     #[test]
     fn legacy_urls_cannot_reroute_the_radio_crash_product() {
         let settings=Settings::decode(br#"{"stream_url":"http://127.0.0.1/other","metadata_url":"","volume":0.3,"vu_response":"peak"}"#).unwrap();

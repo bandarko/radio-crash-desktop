@@ -31,3 +31,15 @@ True Peak and momentary/short-term LUFS are independent measurements in Settings
 Absolute True Peak is in dBTP and has its own two-second held value, independent of the visible RMS hold. RMS -11 dBFS and True Peak 0 dBTP can both be correct. At the default -15 reference they would be +4 and +15 on a common scale, so a large gap is expected when comparing these different detectors. The app keeps them in distinct views rather than altering their values. Red segments on the relative Hi-Fi RMS scale do not prove clipping or audible distortion. True Peak estimates source headroom; playback gain may provide further headroom.
 
 Only momentary/short-term modes are enabled: a fixed 3 s history, no indefinitely growing integrated history and no normalization. LUFS warm-up is 400 ms / 3 s, queried at about 10 Hz. Silence and filter-tail readings below -100 LUFS are unavailable. True Peak updates per 256 consumed frames on the analysis worker. The original analogue peak-meter comparison remains historical context, not a claim of circuitry emulation.
+
+## Optional analog skin (local 1.4.0 preview)
+
+The digital profiles above remain unchanged. Analog VU - Silver Aluminium uses
+a separate fixed full-wave-average detector, sine calibrated, with a 300 ms
+second-order moving-coil model and 1.25% step overshoot. It uses a real circular
+90-degree current-linear scale ending at +3 VU, no hold needle, and its own
+-8 dBFS sine reference by default. Only its level is adjustable; the digital
+RMS/Peak and decay controls are not available while this skin is selected.
+Calibration is display-only; audio is never normalized or changed.
+See [ANALOG-SKIN.md](ANALOG-SKIN.md) for equations, references, tests and the
+first-preview correction after owner review. No certified hardware claim.

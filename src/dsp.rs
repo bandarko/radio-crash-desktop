@@ -37,6 +37,7 @@ impl Default for VuReading {
 }
 #[derive(Clone)]
 pub struct Meters {
+    pub analog: crate::dsp_analog::Reading,
     pub rms: [f32; 2],
     pub peaks: [f32; 2],
     pub held_peaks: [f32; 2],
@@ -52,6 +53,7 @@ pub struct Meters {
 impl Default for Meters {
     fn default() -> Self {
         Self {
+            analog: crate::dsp_analog::Reading::default(),
             rms: [-60.; 2],
             peaks: [-60.; 2],
             held_peaks: [-60.; 2],
@@ -301,7 +303,7 @@ pub struct Analyzer {
     window: Vec<f32>,
     window_energy: f32,
 }
-fn db(v: f32) -> f32 {
+pub(crate) fn db(v: f32) -> f32 {
     (20. * v.max(0.000001).log10()).max(-60.)
 }
 impl Analyzer {

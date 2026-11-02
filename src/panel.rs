@@ -9,6 +9,41 @@ pub const SETTINGS: [f32; 4] = [1060., 303., 60., 52.];
 pub const MINIMIZE: [f32; 4] = [14., 19., 43., 41.];
 pub const DRAG: [f32; 4] = [62., 30., 1093., 62.];
 
+/// Painted hardware and pointer targets share exactly the same logical rectangles.
+pub struct Controls {
+    pub power: [f32; 4],
+    pub play: [f32; 4],
+    pub mute: [f32; 4],
+    pub settings: [f32; 4],
+    pub volume: [f32; 4],
+    pub knob_center: [f32; 2],
+    pub knob_radius: f32,
+}
+impl Controls {
+    pub fn for_skin(skin: crate::skins::Skin) -> Self {
+        match skin {
+            crate::skins::Skin::VfdBlack => Self {
+                power: POWER,
+                play: PLAY,
+                mute: MUTE,
+                settings: SETTINGS,
+                volume: [849., 257., 124., 124.],
+                knob_center: [911., 319.],
+                knob_radius: 54.,
+            },
+            crate::skins::Skin::AnalogSilver => Self {
+                power: crate::analog::POWER,
+                play: crate::analog::PLAY,
+                mute: crate::analog::MUTE,
+                settings: crate::analog::SETTINGS,
+                volume: crate::analog::KNOB,
+                knob_center: [601.5, 307.],
+                knob_radius: 70.,
+            },
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Panel {
     pub origin: Pos2,
@@ -28,6 +63,7 @@ impl Panel {
     pub fn rect(self, [x, y, w, h]: [f32; 4]) -> Rect {
         Rect::from_min_size(self.point(x, y), vec2(w, h) * self.scale)
     }
+    #[cfg(test)]
     pub fn volume(self) -> Rect {
         Rect::from_center_size(self.point(911., 319.), vec2(124., 124.) * self.scale)
     }
@@ -106,6 +142,100 @@ pub fn power_menu(response: &Response, powered: bool) -> Option<PowerAction> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn both_skins_accept_button_centres_and_corners_without_volume_overlap() {
+        for skin in [
+            crate::skins::Skin::VfdBlack,
+            crate::skins::Skin::AnalogSilver,
+        ] {
+            for dpi in [1., 1.25, 1.5, 2.] {
+                for size in [
+                    vec2(560., 206.),
+                    vec2(780., 286.),
+                    vec2(1200., 440.),
+                    vec2(1000., 500.),
+                ] {
+                    let area = Rect::from_min_size(Pos2::ZERO, size);
+                    let panel = Panel::new(area);
+                    let controls = Controls::for_skin(skin);
+                    let geometries = [
+                        controls.power,
+                        controls.play,
+                        controls.mute,
+                        controls.settings,
+                    ];
+                    for (index, geometry) in geometries.iter().enumerate() {
+                        let r = panel.rect(*geometry).shrink(2. / dpi);
+                        for point in [
+                            r.center(),
+                            r.left_top(),
+                            r.right_top(),
+                            r.left_bottom(),
+                            r.right_bottom(),
+                        ] {
+                            assert!(!panel.rect(controls.volume).contains(point));
+                            let ctx = Context::default();
+                            let mut clicked = Vec::new();
+                            for events in [
+                                vec![],
+                                vec![
+                                    Event::PointerMoved(point),
+                                    Event::PointerButton {
+                                        pos: point,
+                                        button: PointerButton::Primary,
+                                        pressed: true,
+                                        modifiers: Modifiers::NONE,
+                                    },
+                                ],
+                                vec![Event::PointerButton {
+                                    pos: point,
+                                    button: PointerButton::Primary,
+                                    pressed: false,
+                                    modifiers: Modifiers::NONE,
+                                }],
+                            ] {
+                                let mut input = RawInput {
+                                    screen_rect: Some(area),
+                                    events,
+                                    ..Default::default()
+                                };
+                                input
+                                    .viewports
+                                    .get_mut(&ViewportId::ROOT)
+                                    .unwrap()
+                                    .native_pixels_per_point = Some(dpi);
+                                let mut output = ctx.run_ui(input, |ui| {
+                                    for (n, g) in geometries.iter().enumerate() {
+                                        if click_target(
+                                            ui,
+                                            panel.rect(*g),
+                                            &format!("skin-control-{n}"),
+                                        )
+                                        .clicked()
+                                        {
+                                            clicked.push(n);
+                                        }
+                                    }
+                                    ui.interact(
+                                        panel.rect(controls.volume),
+                                        Id::unique("volume"),
+                                        Sense::click_and_drag(),
+                                    );
+                                });
+                                output.textures_delta.clear();
+                            }
+                            assert_eq!(
+                                clicked,
+                                [index],
+                                "skin={skin:?}, size={size:?}, dpi={dpi}, point={point:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     fn frame(ctx: &Context, area: Rect, dpi: f32, events: Vec<Event>) -> (Vec<usize>, FullOutput) {
         let mut input = RawInput {

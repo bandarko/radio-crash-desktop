@@ -125,6 +125,7 @@ impl Tray {
         reference: f32,
         fast_vu: bool,
         response: crate::dsp::VuResponse,
+        analog: bool,
     ) {
         let elapsed = self.last.elapsed();
         if elapsed < Duration::from_millis(30) {
@@ -132,8 +133,17 @@ impl Tray {
         }
         self.last = Instant::now();
         self.ticks += 1;
-        let selected = meters.vu(response);
+        let selected = if analog {
+            let level = meters.analog.levels();
+            crate::dsp::VuReading { level, held: level }
+        } else {
+            meters.vu(response)
+        };
         for c in 0..2 {
+            if analog {
+                self.levels[c] = if running { selected.level[c] } else { -60. };
+                continue;
+            }
             self.levels[c] = crate::dsp::follow(
                 self.levels[c],
                 if running { selected.level[c] } else { -60. },
