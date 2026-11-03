@@ -279,10 +279,9 @@ impl AnalogSkin {
     ) {
         let [x, y] = l.pivots[c];
         let at = |offset: Vec2| panel.point(x + offset.x, y + offset.y);
-        let scale_point = |t: f32, radius: f32| at(needle_offset(t, radius));
+        let scale_point = |t: f32, offset: f32| at(scale_offset(l, t, offset));
         let face = panel.rect(l.faces[c]);
         let p = p.with_clip_rect(face);
-        let r = l.radius;
         if !l.ivory {
             let light = if power { settings.vfd_brightness } else { 0.16 };
             p.rect_filled(
@@ -295,7 +294,10 @@ impl AnalogSkin {
         for db in -20..=3 {
             let t = 10f32.powf((db as f32 - 3.) / 20.);
             p.line_segment(
-                [scale_point(t, r), scale_point(t, r + 10.)],
+                [
+                    scale_point(t, if l.ivory { 4. } else { 0. }),
+                    scale_point(t, if l.ivory { 27. } else { 10. }),
+                ],
                 Stroke::new(0.9 * panel.scale, if db > 0 { RED } else { INK }),
             );
         }
@@ -313,21 +315,34 @@ impl AnalogSkin {
         ] {
             let t = 10f32.powf((db - 3.) / 20.);
             p.text(
-                scale_point(t, r + 24.),
+                scale_point(t, if l.ivory { 45. } else { 24. }),
                 Align2::CENTER_CENTER,
                 text,
                 FontId::proportional(if l.ivory { 10.5 } else { 12. } * panel.scale),
                 if db > 0. { RED } else { INK },
             );
         }
-        for (start, end, color, width) in [
-            (0., 10f32.powf(-3. / 20.), INK, 0.8),
-            (10f32.powf(-3. / 20.), 1., RED, 2.2),
-        ] {
-            let points: Vec<_> = (0..=60)
-                .map(|i| scale_point(start + (end - start) * i as f32 / 60., r))
-                .collect();
-            p.add(Shape::line(points, Stroke::new(width * panel.scale, color)));
+        if l.ivory {
+            // A straight printed baseline, with radial ticks converging on the shaft.
+            // Scale labels lie on a second horizontal plane, rather than on an arc.
+            let depth = flat_scale_depth(l);
+            p.line_segment(
+                [
+                    at(vec2(-depth - 18., -depth)),
+                    at(vec2(depth + 18., -depth)),
+                ],
+                Stroke::new(0.9 * panel.scale, INK),
+            );
+        } else {
+            for (start, end, color, width) in [
+                (0., 10f32.powf(-3. / 20.), INK, 0.8),
+                (10f32.powf(-3. / 20.), 1., RED, 2.2),
+            ] {
+                let points: Vec<_> = (0..=60)
+                    .map(|i| scale_point(start + (end - start) * i as f32 / 60., 0.))
+                    .collect();
+                p.add(Shape::line(points, Stroke::new(width * panel.scale, color)));
+            }
         }
         p.text(
             at(vec2(0., -l.vu_offset)),
@@ -347,7 +362,8 @@ impl AnalogSkin {
             self.movement.channels[c].position,
             settings.analog_reference_dbfs,
         );
-        let tip = scale_point(t, r + 11.);
+        // Needle travel is circular even when the printed scale is straight.
+        let tip = at(needle_offset(t, needle_length(l)));
         let hub = at(Vec2::ZERO);
         for (offset, width, alpha) in [(vec2(2.8, 1.8), 2.8, 20), (vec2(2., 1.4), 1.8, 35)] {
             p.line_segment(
@@ -372,6 +388,22 @@ impl AnalogSkin {
             Color32::from_white_alpha(10),
             Color32::TRANSPARENT,
         );
+    }
+}
+fn flat_scale_depth(l: Layout) -> f32 {
+    l.radius - 43.
+}
+fn needle_length(l: Layout) -> f32 {
+    if l.ivory { 112. } else { l.radius + 11. }
+}
+/// Intersect the moving needle's ray with a horizontal scale plane.
+/// The detector still maps coil current to angle; changing the card never changes measurement.
+fn scale_offset(l: Layout, position: f32, offset: f32) -> Vec2 {
+    if l.ivory {
+        let ray = needle_offset(position, 1.);
+        ray * ((flat_scale_depth(l) + offset) / -ray.y)
+    } else {
+        needle_offset(position, l.radius + offset)
     }
 }
 fn angle(position: f32) -> f32 {
@@ -416,12 +448,43 @@ mod geometry_tests {
     #[test]
     fn real_needle_has_constant_length_and_ninety_degree_sweep() {
         for skin in [Skin::AnalogSilver, Skin::AnalogGlass] {
-            let length = layout(skin).radius + 11.;
+            let length = needle_length(layout(skin));
             for i in 0..=100 {
                 assert!((needle_offset(i as f32 / 100., length).length() - length).abs() < 0.0001);
             }
             let sweep = needle_offset(1., length).angle() - needle_offset(0., length).angle();
             assert!((sweep.to_degrees() - 90.).abs() < 0.001);
+        }
+    }
+    #[test]
+    fn shared_glass_scale_is_straight_and_each_tick_matches_the_needle_ray() {
+        let l = layout(Skin::AnalogGlass);
+        let mut previous = f32::NEG_INFINITY;
+        for i in 0..=100 {
+            let t = i as f32 / 100.;
+            let base = scale_offset(l, t, 0.);
+            assert!((base.y + flat_scale_depth(l)).abs() < 0.0001);
+            assert!(base.x > previous);
+            previous = base.x;
+            let ray = needle_offset(t, 1.);
+            for plane in [4., 27., 45.] {
+                let point = scale_offset(l, t, plane);
+                assert!((point.y + flat_scale_depth(l) + plane).abs() < 0.0001);
+                assert!((ray.x * point.y - ray.y * point.x).abs() < 0.0001);
+            }
+        }
+    }
+    #[test]
+    fn silver_card_keeps_its_approved_circular_geometry() {
+        let l = layout(Skin::AnalogSilver);
+        for i in 0..=100 {
+            let t = i as f32 / 100.;
+            for offset in [0., 10., 24.] {
+                assert_eq!(
+                    scale_offset(l, t, offset),
+                    needle_offset(t, l.radius + offset)
+                );
+            }
         }
     }
     #[test]
@@ -436,8 +499,8 @@ mod geometry_tests {
             }
             for (face, pivot) in l.faces.into_iter().zip(l.pivots) {
                 for i in 0..=100 {
-                    let pt =
-                        pos2(pivot[0], pivot[1]) + needle_offset(i as f32 / 100., l.radius + 24.);
+                    let pt = pos2(pivot[0], pivot[1])
+                        + scale_offset(l, i as f32 / 100., if l.ivory { 45. } else { 24. });
                     assert!(panel.rect(face).shrink(5.).contains(pt), "{skin:?}: {pt:?}");
                 }
             }

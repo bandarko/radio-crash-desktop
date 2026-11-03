@@ -19,3 +19,8 @@ Analog VU - Ivory Glass is a third optional skin, sharing exactly the same fixed
 analog detector and sensitivity. Its continuous ivory centre has no dark display
 rectangle. Any future material/layout change must keep native control geometry
 aligned with the photographed controls at compact and large window sizes.
+
+Owner-approved geometry direction for Ivory Glass: straight horizontal scale
+and label rows with fanned divisions, not an oval/arc. Needle travel stays
+circular and divisions must intersect its actual measurement ray. Keep Silver
+Aluminium's existing curved card and low centre window unchanged.

@@ -1,6 +1,7 @@
 # Radio Crash Desktop 1.4.1 (local owner preview)
 
 - Third optional skin: Analog VU - Ivory Glass. One continuous warm ivory backplate behind shared glass, live now-playing lettering in the centre, a large round right-hand volume knob, and functional controls underneath.
+- Ivory Glass instruments use a straight horizontal scale and fanned radial divisions. Needle length is fixed and every division intersects the actual needle ray; the fixed +3 VU calibration and 300 ms detector are preserved.
 - Refined Analog VU - Silver Aluminium: slightly narrower instrument apertures, a wider central information display, and a smaller round volume knob.
 - Both silver SETTINGS buttons have clean metal caps, with the SETTINGS label underneath and no black gear or LED.
 - Skin selection, illumination, standby clock and analog sensitivity persist. VFD Digital - Black Aluminium remains the default.

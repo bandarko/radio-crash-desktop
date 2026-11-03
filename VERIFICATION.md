@@ -1,11 +1,13 @@
 # Local 1.4.1 owner preview verification
 
 - Not published. Public 1.4.0, its tag, GitHub assets and the installed /Applications app are untouched.
-- 64 deterministic/unit/egui interaction tests passed; strict Clippy and formatting passed.
+- 66 deterministic/unit/egui interaction tests passed; strict Clippy and formatting passed.
 - New menu choice selected in an actual egui event test and serialized/restored without overwriting digital meter preferences. Pointer centre/corner tests cover all three skins at 100/125/150/200 percent DPI, compact, large and custom-aspect panels. Geometry checks protect circular needle travel, round knob targets and aperture separation.
 - Locked release builds succeeded locally for macOS ARM64, macOS Intel and Windows x64 GNU. Physical Intel Mac and Windows runtime tests have not been performed for 1.4.1.
 - Native M2 Pro/Retina runtime captures made for all three skins using actual Radio Crash AAC playback, real now-playing metadata and measured bitrate/44.1 kHz/stereo properties. Enhanced optics initialized successfully; no texture-size panic.
 - Native GUI clicks verified PLAY/STOP, return to standby clock, resume, MUTE and volume scrolling on Ivory Glass. A 120-second interaction session ended cleanly; its output logs reported zero underrun frames. CUA drag did not visibly move the index, so native drag verification remains for owner testing; existing drag handling was not changed. CUA could not capture the native Settings child window; the menu is covered by the egui interaction test, and requires owner visual review.
+- Straight-scale tests verify horizontal baselines/labels, strictly increasing division positions, and alignment with the needle ray. A separate test verifies the exact unchanged Silver Aluminium circular scale.
+- User-provided production screenshot confirms Enhanced optics on an RTX 4050 Laptop GPU, OpenGL 3.3 / NVIDIA 528.83, measured GPU optics 0.18 ms. This is owner-reported production evidence, not physical Windows testing of the local 1.4.1 build.
 - Analog detector, playback engine, FFT, true peak and loudness analysis source files are unchanged. This preview changes skin/layout only.
 - Preview Mac bundle is universal and ad-hoc signed, with separate LOCAL-PREVIEW configuration. It is not notarized and is not a public download artifact. Publication requires the owner's explicit approval after testing.
 

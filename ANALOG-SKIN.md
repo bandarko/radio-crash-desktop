@@ -81,3 +81,15 @@ painting, circular volume index, control hit targets and 90-degree needles.
 Texture sources are tiled to respect egui's initial 2048 texture limit.
 
 This is a local owner preview only, not a published release.
+
+
+## Ivory Glass straight scale (owner refinement)
+
+The third skin uses a straight horizontal scale with horizontal labels and
+fanned divisions. Each division is the intersection of the same current-linear
+needle ray with two horizontal planes. The needle retains fixed length and
+circular travel. This changes the printed card geometry, not the detector,
+reference, scale endpoint (+3 VU) or PCM. No amplifier watts or output power
+are inferred from the stream. Silver Aluminium keeps its approved curved scale
+and existing small centre window. The proposed taller centre was rejected and
+never integrated. No material asset was regenerated for this straight scale.
