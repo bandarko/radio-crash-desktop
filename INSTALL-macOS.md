@@ -1,8 +1,8 @@
 # Radio Crash Desktop - macOS
 
-Verzija 1.4.0 · Universal: Apple Silicon i Intel · macOS 11 ili noviji.
+Verzija 1.4.1 · Universal: Apple Silicon i Intel · macOS 11 ili noviji.
 
-Mac build 140 potpisan je Developer ID Application certifikatom i uspješno je prošao Appleovu notarizaciju. Notarizacijski ticket priložen je aplikaciji.
+Mac build 141 potpisan je Developer ID Application certifikatom i uspješno je prošao Appleovu notarizaciju. Notarizacijski ticket priložen je aplikaciji.
 
 1. Raspakirajte ZIP.
 2. Povucite **Radio Crash Desktop.app** u **Applications**.
@@ -16,7 +16,7 @@ Veličina prozora: povucite desni ili donji rub kućišta; za točne dimenzije o
 
 Kratke upute i release notes nalaze se u `PROCITAJ-ME.txt` uz aplikaciju. Objedinjene licence i izvorne poveznice nalaze se unutar aplikacije, u Contents/Resources/LICENSES.txt.
 
-Settings > Receiver skin nudi novi Analog VU - Silver Aluminium. Crni VFD ostaje zadani skin. Analogni instrumenti imaju fiksni klasični odziv i zasebnu level postavku.
+Settings > Receiver skin nudi Analog VU - Silver Aluminium i novi Analog VU - Ivory Glass s ravnom skalom. Crni VFD ostaje zadani skin. Analogni instrumenti imaju fiksni klasični odziv i zasebnu level postavku.
 
 English: Unzip, drag the app to Applications, open it and press Power/Play. Right-click the upper chassis for window size, settings, minimize and quit. Click the menu-bar L/R meters to restore the receiver. Read the release notes for verification scope and supported stream formats.
 

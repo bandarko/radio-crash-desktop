@@ -1,4 +1,4 @@
-# Radio Crash Desktop 1.4.1 (local owner preview)
+# Radio Crash Desktop 1.4.1
 
 - Both silver skins now use the exact supplied Radio Crash logo bitmap, tinted as dark ink directly on aluminium. The photographic header is continuous bare aluminium, with no rectangular cover or logo backdrop.
 - Windows chassis dragging uses nonmodal physical desktop-coordinate movement so the rendering loop can continue while the mouse is held. Mouse-up, focus loss and Escape cancel movement. Physical Windows runtime review remains pending.
@@ -8,7 +8,7 @@
 - Both silver SETTINGS buttons have clean metal caps, with the SETTINGS label underneath and no black gear or LED.
 - Skin selection, illumination, standby clock and analog sensitivity persist. VFD Digital - Black Aluminium remains the default.
 - Both analog skins retain the approved fixed classical 300 ms VU detector and +3 VU scale. Playback, detector calibration and separate digital response preferences are unchanged.
-- Local preview only. Publication requires owner testing and explicit approval. Windows build validation is separate from physical Windows runtime testing.
+- The owner approved publication after local review. Windows build validation is separate from physical Windows runtime testing.
 
 # Radio Crash Desktop 1.4.0
 

@@ -66,7 +66,7 @@ Visual comparison viewed: https://www.youtube.com/watch?v=kPy2RFPY0Yw
 calibration recording of our radio stream or a compliance certificate.
 
 
-## 1.4.1 local layout review
+## 1.4.1 layout
 
 Silver Aluminium keeps its separate windows, with a slightly wider now-playing
 display, narrower inner instrument edges and a smaller circular volume knob.
@@ -80,7 +80,7 @@ The previous substrate aspect mismatch is removed: new materials match the
 painting, circular volume index, control hit targets and 90-degree needles.
 Texture sources are tiled to respect egui's initial 2048 texture limit.
 
-This is a local owner preview only, not a published release.
+The owner approved these changes and requested publication of 1.4.1.
 
 
 ## Ivory Glass straight scale (owner refinement)
