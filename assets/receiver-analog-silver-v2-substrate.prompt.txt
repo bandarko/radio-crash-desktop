@@ -1,0 +1,10 @@
+Use case: precise-object-edit
+Asset type: photoreal empty radio receiver material atlas for native custom-painted controls.
+Edit target: attached existing silver Radio Crash receiver. Preserve the current product identity, exact natural silver grain, 2 amber blank VU windows, central BLACK blank display, central volume knob, exterior labels and bottom control layout. This is a small refinement of THIS existing silver receiver, NOT the shared-glass design.
+Output WIDE landscape aspect 30:11 (about 2070x760), whole receiver visible, transparent outside with feet.
+Layout in normalized 1200x440 target coordinates: left amber meter outer rectangle approx (64,81) to (427,249), right meter (773,81) to (1136,249). Both inner edges shift outward from center slightly to make room: left inner edge x427 instead of443, right inner edge x773 instead of757. Keep the OUTER edges unchanged.
+Central BLACK display: broaden gently to outer rectangle (444,132) to (756,221), retaining its black glass and gold bevel. No text or markings inside any glass.
+Volume: central knob around (600,309), diameter124x124 logical, a TRUE CIRCLE with slightly smaller perimeter ticks around it, not oval. VOLUME label below at y381.
+Bottom empty metal buttons in same layout: POWER near(100,316), PLAY/STOP near(327,318), MUTE near(835,316), SETTINGS near(1083,316). Keep their labels beneath them.
+Keep small original radio crash wordmark upper left, INTERNET RADIO RECEIVER and SINCE 1986 upper right. Keep screws and feet.
+No scales, VU numerals, needles, metadata, illuminated symbols, button icons, knob index. All glass faces EMPTY. Must feel almost identical to supplied current skin with only the modest layout refinements requested, correctly proportioned in the final wide canvas.

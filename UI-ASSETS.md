@@ -36,3 +36,15 @@ The original v4 fascia and HD Radio lens remain unchanged. Built-in imagegen edi
 - The revised substrate hides the needle shafts below the lower bezel. It contains no needle, shadow, scale, metadata, knob index or indicator. Rust paints every live instrument element.
 - The native needle has constant length and an actual circular 90-degree sweep. The earlier elliptical first preview is superseded after owner feedback.
 - Rajdhani-SemiBold (already bundled and SIL OFL licensed) draws the continuous amber artist/title lettering, with fallback for Croatian characters. No new font dependency.
+
+
+## Analog material refinements (1.4.1 local preview)
+
+- Tool: built-in imagegen, precise-object-edit, transparent background. All project assets are embedded locally.
+- Silver refinement: `assets/receiver-analog-silver-v2-substrate.png`, from the prior production silver substrate. Prompt: `assets/receiver-analog-silver-v2-substrate.prompt.txt`. Generated source: `exec-1828c46f-05f0-4328-a96c-7ea9b6f96e17.png`.
+- Third skin: `assets/receiver-analog-ivory-glass-substrate.png`, from the owner's approved shared-glass concept with continuous ivory centre. Prompt: `assets/receiver-analog-ivory-glass-substrate.prompt.txt`. Generated source: `exec-8ae07484-602d-4282-b6f8-3a130eb5703f.png`.
+- Both source images use approximately 30:11 proportions matching the native panel. Circular knob targets and live indices share the same uniform panel transform. Lossless two-tile texture upload avoids exceeding egui's initial 2048 texture limit.
+- Only materials and fixed exterior labels are photographic. Every scale, needle, metadata field, standby clock, button icon and volume index is painted live. There is no baked track, meter reading or simulated animation.
+- The third skin's now-playing text is dark ink directly on the illuminated shared backplate, without a separate black rectangle. Enhanced optics cover the shared aperture rather than the VFD fascia shader.
+
+Owner refinement: both silver SETTINGS caps remain bare metal. Their functional hit targets and exterior labels are unchanged; no gear or LED is drawn. VFD controls retain their existing symbols.

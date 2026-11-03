@@ -1,50 +1,139 @@
-//! Silver analog skin. Only materials are photographed; scales, needles,
-//! metadata, control indicators and volume index are painted live by egui.
+//! Photographic silver analog skins. Instruments and metadata use live playback PCM.
 use crate::{
-    audio::Snapshot, clock_face::ClockFace, dsp_analog, panel::Panel, settings::Settings, skins,
+    audio::Snapshot,
+    clock_face::ClockFace,
+    dsp_analog,
+    panel::Panel,
+    settings::Settings,
+    skins::{self, Skin},
 };
 use eframe::egui::*;
 
-pub const POWER: [f32; 4] = [70., 299., 60., 34.];
-pub const PLAY: [f32; 4] = [255., 296., 143., 43.];
-pub const MUTE: [f32; 4] = [808., 299., 53., 34.];
-pub const SETTINGS: [f32; 4] = [1043., 299., 80., 34.];
-pub const KNOB: [f32; 4] = [526., 243., 151., 128.];
-pub const GLASS: [f32; 4] = [465., 143., 271., 66.];
 const AMBER: Color32 = Color32::from_rgb(239, 178, 84);
-const INK: Color32 = Color32::from_rgb(32, 26, 18);
+const INK: Color32 = Color32::from_rgb(48, 37, 23);
 const RED: Color32 = Color32::from_rgb(168, 42, 25);
 
+/// All material apertures, live graphics and hit regions use this same 1200x440 grid.
+#[derive(Clone, Copy)]
+pub struct Layout {
+    pub power: [f32; 4],
+    pub play: [f32; 4],
+    pub mute: [f32; 4],
+    pub settings: [f32; 4],
+    pub knob: [f32; 4],
+    pub glass: [f32; 4],
+    faces: [[f32; 4]; 2],
+    pivots: [[f32; 2]; 2],
+    radius: f32,
+    vu_offset: f32,
+    display: [f32; 4],
+    ivory: bool,
+}
+pub fn layout(skin: Skin) -> Layout {
+    match skin {
+        Skin::AnalogGlass => Layout {
+            power: [117., 315., 73., 32.],
+            play: [332., 315., 164., 32.],
+            mute: [621., 315., 69., 32.],
+            settings: [802., 315., 83., 32.],
+            knob: [963., 116., 178., 178.],
+            glass: [72., 120., 841., 151.],
+            faces: [[89., 120., 276., 150.], [619., 120., 278., 150.]],
+            pivots: [[230., 270.], [758., 270.]],
+            radius: 119.,
+            vu_offset: 58.,
+            display: [389., 147., 228., 96.],
+            ivory: true,
+        },
+        _ => Layout {
+            power: [74., 299., 58., 34.],
+            play: [257., 298., 143., 39.],
+            mute: [809., 299., 51., 34.],
+            settings: [1044., 299., 80., 34.],
+            knob: [534., 246., 132., 132.],
+            glass: [456., 142., 288., 70.],
+            faces: [[83., 99., 345., 139.], [772., 99., 347., 139.]],
+            pivots: [[255.5, 320.], [946.5, 320.]],
+            radius: 190.,
+            vu_offset: 132.,
+            display: [467., 145., 266., 65.],
+            ivory: false,
+        },
+    }
+}
+
+struct Photo {
+    tiles: [TextureHandle; 2],
+    split: f32,
+}
+impl Photo {
+    fn load(ctx: &Context, bytes: &[u8], name: &str) -> Self {
+        let photo = image::load_from_memory(bytes)
+            .expect("bundled analog materials")
+            .to_rgba8();
+        let (w, h) = photo.dimensions();
+        let split = w / 2;
+        // Keep the full Retina source while respecting egui's initial 2048 texture limit.
+        let tile = |x, width, suffix| {
+            let pixels = image::imageops::crop_imm(&photo, x, 0, width, h).to_image();
+            ctx.load_texture(
+                format!("{name}-{suffix}"),
+                ColorImage::from_rgba_unmultiplied([width as usize, h as usize], pixels.as_raw()),
+                TextureOptions::LINEAR,
+            )
+        };
+        Self {
+            tiles: [tile(0, split, "left"), tile(split, w - split, "right")],
+            split: split as f32 / w as f32,
+        }
+    }
+    fn paint(&self, p: &Painter, panel: Panel) {
+        let x = 1200. * self.split;
+        for (tile, rect) in [
+            (&self.tiles[0], [0., 0., x, 440.]),
+            (&self.tiles[1], [x, 0., 1200. - x, 440.]),
+        ] {
+            p.image(
+                tile.id(),
+                panel.rect(rect),
+                Rect::from_min_max(Pos2::ZERO, pos2(1., 1.)),
+                Color32::WHITE,
+            );
+        }
+    }
+}
+
 pub struct AnalogSkin {
-    texture: TextureHandle,
+    silver: Photo,
+    glass: Option<Photo>,
     movement: dsp_analog::Reading,
 }
 impl AnalogSkin {
     pub fn new(ctx: &Context) -> Self {
-        let photo = image::load_from_memory(include_bytes!(
-            "../assets/receiver-analog-silver-substrate.png"
-        ))
-        .expect("bundled silver analog fascia")
-        .to_rgba8();
         Self {
-            texture: ctx.load_texture(
-                "analog-silver-materials",
-                ColorImage::from_rgba_unmultiplied(
-                    [photo.width() as usize, photo.height() as usize],
-                    photo.as_raw(),
-                ),
-                TextureOptions::LINEAR,
+            silver: Photo::load(
+                ctx,
+                include_bytes!("../assets/receiver-analog-silver-v2-substrate.png"),
+                "analog-silver-v2",
             ),
+            glass: None,
             movement: dsp_analog::Reading::default(),
         }
     }
-    pub fn background(&self, p: &Painter, panel: Panel) {
-        p.image(
-            self.texture.id(),
-            panel.rect([0., 0., 1200., 440.]),
-            Rect::from_min_max(Pos2::ZERO, pos2(1., 1.)),
-            Color32::WHITE,
-        );
+    pub fn background(&mut self, p: &Painter, panel: Panel, skin: Skin) {
+        if skin == Skin::AnalogGlass {
+            self.glass
+                .get_or_insert_with(|| {
+                    Photo::load(
+                        p.ctx(),
+                        include_bytes!("../assets/receiver-analog-ivory-glass-substrate.png"),
+                        "analog-ivory-glass",
+                    )
+                })
+                .paint(p, panel);
+        } else {
+            self.silver.paint(p, panel);
+        }
     }
     #[allow(clippy::too_many_arguments)]
     pub fn instruments(
@@ -61,8 +150,7 @@ impl AnalogSkin {
         muted: bool,
     ) {
         if running {
-            // Already rectified and mechanically integrated at the audio sample clock.
-            // Never apply the digital RMS/Peak response or a second GUI envelope.
+            // Mechanically integrated at the consumed audio sample clock. No second GUI envelope.
             self.movement = snap.meters.analog;
         } else {
             let step = dsp_analog::Transition::new(dt as f64);
@@ -70,41 +158,54 @@ impl AnalogSkin {
                 step.advance(m, 0.);
             }
         }
-        for c in 0..2 {
-            self.dial(p, panel, c, settings, power);
+        let l = layout(settings.skin);
+        let light = if power { settings.vfd_brightness } else { 0.16 };
+        if l.ivory {
+            p.rect_filled(
+                panel.rect(l.glass),
+                0.,
+                Color32::from_black_alpha(((1. - light) * 145.) as u8),
+            );
         }
-        let mut display = p.with_clip_rect(panel.rect(GLASS));
-        display.multiply_opacity(crate::settings::display_brightness(settings.vfd_brightness));
-        let label = |at: Pos2, s: &str, size: f32, align| {
+        for c in 0..2 {
+            self.dial(p, panel, c, settings, power, l);
+        }
+        let mut display = p.with_clip_rect(panel.rect(l.display));
+        let ink = if l.ivory { INK } else { AMBER };
+        if !l.ivory {
+            display.multiply_opacity(crate::settings::display_brightness(light));
+        }
+        let [x, y, w, h] = l.display;
+        let label = |px, py, text: &str, size, align| {
             display.text(
-                at,
+                panel.point(px, py),
                 align,
-                s,
-                FontId::proportional(size * panel.scale),
-                AMBER,
+                text,
+                FontId::new(
+                    size * panel.scale,
+                    FontFamily::Name("analog-display".into()),
+                ),
+                ink,
             );
         };
         if !running && settings.standby_clock {
             label(
-                panel.point(600., 164.),
+                x + w * 0.5,
+                y + h * 0.43,
                 &clock.time,
-                27.,
+                if l.ivory { 35. } else { 28. },
                 Align2::CENTER_CENTER,
             );
             label(
-                panel.point(600., 195.),
+                x + w * 0.5,
+                y + h * 0.86,
                 &clock.date,
                 10.,
                 Align2::CENTER_CENTER,
             );
-            label(panel.point(724., 147.), "STANDBY", 7.5, Align2::RIGHT_TOP);
+            label(x + w * 0.5, y, "STANDBY", 8.5, Align2::CENTER_TOP);
         } else if power {
-            label(
-                panel.point(724., 147.),
-                &snap.status,
-                7.5,
-                Align2::RIGHT_TOP,
-            );
+            label(x + w * 0.5, y, &snap.status, 9., Align2::CENTER_TOP);
             let artist = if snap.artist.is_empty() {
                 "RADIO CRASH"
             } else {
@@ -117,19 +218,23 @@ impl AnalogSkin {
             };
             marquee(
                 &display,
-                panel.rect([490., 157., 235., 18.]),
+                panel.rect([x, y + h * 0.23, w, h * 0.28]),
                 artist,
-                15.,
+                if l.ivory { 20. } else { 16. },
                 panel.scale,
                 track_seconds,
+                ink,
+                l.ivory,
             );
             marquee(
                 &display,
-                panel.rect([490., 177., 235., 17.]),
+                panel.rect([x, y + h * 0.53, w, h * 0.26]),
                 title,
-                13.,
+                if l.ivory { 18. } else { 14. },
                 panel.scale,
                 track_seconds,
+                ink,
+                l.ivory,
             );
             let bitrate = snap
                 .bitrate
@@ -152,29 +257,46 @@ impl AnalogSkin {
                 &snap.codec
             };
             label(
-                panel.point(490., 198.),
+                x + w * 0.5,
+                y + h * 0.85,
                 &format!("{codec}   {bitrate}   {rate}   {channels}"),
-                8.,
-                Align2::LEFT_TOP,
+                if l.ivory { 10. } else { 9. },
+                Align2::CENTER_TOP,
             );
         }
         if muted {
-            label(panel.point(476., 147.), "MUTE", 7.5, Align2::LEFT_TOP);
+            label(x, y, "MUTE", 8., Align2::LEFT_TOP);
         }
     }
-    fn dial(&self, p: &Painter, panel: Panel, c: usize, settings: &Settings, power: bool) {
-        let pivot = vec2(if c == 0 { 255. } else { 948. }, 320.);
-        let at = |offset: Vec2| panel.point(pivot.x + offset.x, pivot.y + offset.y);
-        // Real circular travel about a shaft hidden below the lower bezel.
-        // A rotating needle must have constant length, never elliptical stretching.
+    fn dial(
+        &self,
+        p: &Painter,
+        panel: Panel,
+        c: usize,
+        settings: &Settings,
+        power: bool,
+        l: Layout,
+    ) {
+        let [x, y] = l.pivots[c];
+        let at = |offset: Vec2| panel.point(x + offset.x, y + offset.y);
         let scale_point = |t: f32, radius: f32| at(needle_offset(t, radius));
-        // Linear angular deflection per coil current; dB labels are logarithmically spaced.
+        let face = panel.rect(l.faces[c]);
+        let p = p.with_clip_rect(face);
+        let r = l.radius;
+        if !l.ivory {
+            let light = if power { settings.vfd_brightness } else { 0.16 };
+            p.rect_filled(
+                face,
+                0.,
+                Color32::from_black_alpha(((1. - light) * 175.) as u8),
+            );
+        }
+        // Linear deflection per coil current, logarithmically spaced dB labels, fixed +3 VU.
         for db in -20..=3 {
             let t = 10f32.powf((db as f32 - 3.) / 20.);
-            let color = if db > 0 { RED } else { INK };
             p.line_segment(
-                [scale_point(t, 200.), scale_point(t, 210.)],
-                Stroke::new(0.9 * panel.scale, color),
+                [scale_point(t, r), scale_point(t, r + 10.)],
+                Stroke::new(0.9 * panel.scale, if db > 0 { RED } else { INK }),
             );
         }
         for (db, text) in [
@@ -191,10 +313,10 @@ impl AnalogSkin {
         ] {
             let t = 10f32.powf((db - 3.) / 20.);
             p.text(
-                scale_point(t, 224.),
+                scale_point(t, r + 24.),
                 Align2::CENTER_CENTER,
                 text,
-                FontId::proportional(12. * panel.scale),
+                FontId::proportional(if l.ivory { 10.5 } else { 12. } * panel.scale),
                 if db > 0. { RED } else { INK },
             );
         }
@@ -203,50 +325,41 @@ impl AnalogSkin {
             (10f32.powf(-3. / 20.), 1., RED, 2.2),
         ] {
             let points: Vec<_> = (0..=60)
-                .map(|i| scale_point(start + (end - start) * i as f32 / 60., 200.))
+                .map(|i| scale_point(start + (end - start) * i as f32 / 60., r))
                 .collect();
             p.add(Shape::line(points, Stroke::new(width * panel.scale, color)));
         }
         p.text(
-            at(vec2(0., -133.)),
+            at(vec2(0., -l.vu_offset)),
             Align2::CENTER_CENTER,
             "VU",
             FontId::proportional(22. * panel.scale),
             INK,
         );
         p.text(
-            at(vec2(-145., -104.)),
+            face.left_bottom() + vec2(7., -20.) * panel.scale,
             Align2::LEFT_CENTER,
             if c == 0 { "LEFT" } else { "RIGHT" },
             FontId::monospace(8. * panel.scale),
             INK,
         );
-        let face = panel.rect([if c == 0 { 80. } else { 771. }, 96., 349., 144.]);
-        // Illumination only. No gain or detector settings are changed by Night mode.
-        let light = if power { settings.vfd_brightness } else { 0.16 };
-        p.rect_filled(
-            face,
-            0.,
-            Color32::from_black_alpha(((1. - light) * 175.) as u8),
-        );
         let t = dsp_analog::position(
             self.movement.channels[c].position,
             settings.analog_reference_dbfs,
         );
-        let tip = scale_point(t, 211.);
+        let tip = scale_point(t, r + 11.);
         let hub = at(Vec2::ZERO);
-        let clipped = p.with_clip_rect(face);
         for (offset, width, alpha) in [(vec2(2.8, 1.8), 2.8, 20), (vec2(2., 1.4), 1.8, 35)] {
-            clipped.line_segment(
+            p.line_segment(
                 [hub + offset * panel.scale, tip + offset * panel.scale],
                 Stroke::new(width * panel.scale, Color32::from_black_alpha(alpha)),
             );
         }
-        clipped.line_segment(
+        p.line_segment(
             [hub, tip],
             Stroke::new(1.7 * panel.scale, Color32::from_rgb(168, 34, 19)),
         );
-        clipped.line_segment(
+        p.line_segment(
             [
                 hub - vec2(0.35, 0.) * panel.scale,
                 tip - vec2(0.35, 0.) * panel.scale,
@@ -254,7 +367,7 @@ impl AnalogSkin {
             Stroke::new(0.45 * panel.scale, Color32::from_rgb(245, 111, 65)),
         );
         skins::gradient(
-            &clipped,
+            &p,
             Rect::from_min_size(face.min, vec2(face.width(), face.height() * 0.25)),
             Color32::from_white_alpha(10),
             Color32::TRANSPARENT,
@@ -268,34 +381,66 @@ fn needle_offset(position: f32, length: f32) -> Vec2 {
     let a = angle(position);
     vec2(a.cos(), a.sin()) * length
 }
-
-fn marquee(p: &Painter, rect: Rect, value: &str, size: f32, scale: f32, elapsed: f32) {
+#[allow(clippy::too_many_arguments)]
+fn marquee(
+    p: &Painter,
+    rect: Rect,
+    value: &str,
+    size: f32,
+    scale: f32,
+    elapsed: f32,
+    ink: Color32,
+    center: bool,
+) {
     let clipped = p.with_clip_rect(rect);
     let font = FontId::new(size * scale, FontFamily::Name("analog-display".into()));
-    let galley = p.layout_no_wrap(value.to_owned(), font, AMBER);
+    let galley = p.layout_no_wrap(value.to_owned(), font, ink);
     let width = galley.size().x;
     if width <= rect.width() {
-        clipped.galley(rect.min, galley, AMBER);
+        let offset = if center {
+            (rect.width() - width) * 0.5
+        } else {
+            0.
+        };
+        clipped.galley(rect.min + vec2(offset, 0.), galley, ink);
     } else {
         let gap = 35. * scale;
         let offset = ((elapsed - 3.).max(0.) * 20. * scale) % (width + gap);
-        clipped.galley(rect.min - vec2(offset, 0.), galley.clone(), AMBER);
-        clipped.galley(rect.min + vec2(width + gap - offset, 0.), galley, AMBER);
+        clipped.galley(rect.min - vec2(offset, 0.), galley.clone(), ink);
+        clipped.galley(rect.min + vec2(width + gap - offset, 0.), galley, ink);
     }
 }
-
 #[cfg(test)]
 mod geometry_tests {
     use super::*;
     #[test]
     fn real_needle_has_constant_length_and_ninety_degree_sweep() {
-        let length = 211.;
-        for i in 0..=100 {
-            let p = needle_offset(i as f32 / 100., length);
-            assert!((p.length() - length).abs() < 0.0001);
+        for skin in [Skin::AnalogSilver, Skin::AnalogGlass] {
+            let length = layout(skin).radius + 11.;
+            for i in 0..=100 {
+                assert!((needle_offset(i as f32 / 100., length).length() - length).abs() < 0.0001);
+            }
+            let sweep = needle_offset(1., length).angle() - needle_offset(0., length).angle();
+            assert!((sweep.to_degrees() - 90.).abs() < 0.001);
         }
-        let start = needle_offset(0., length).angle();
-        let end = needle_offset(1., length).angle();
-        assert!(((end - start).to_degrees() - 90.).abs() < 0.001);
+    }
+    #[test]
+    fn analog_knobs_are_round_and_display_does_not_overlap_instruments() {
+        for skin in [Skin::AnalogSilver, Skin::AnalogGlass] {
+            let l = layout(skin);
+            assert_eq!(l.knob[2], l.knob[3]);
+            let panel = Panel::new(Rect::from_min_size(Pos2::ZERO, vec2(1200., 440.)));
+            for face in l.faces {
+                assert!(!panel.rect(l.display).intersects(panel.rect(face)));
+                // Every scale label remains inside its glass aperture at either extreme.
+            }
+            for (face, pivot) in l.faces.into_iter().zip(l.pivots) {
+                for i in 0..=100 {
+                    let pt =
+                        pos2(pivot[0], pivot[1]) + needle_offset(i as f32 / 100., l.radius + 24.);
+                    assert!(panel.rect(face).shrink(5.).contains(pt), "{skin:?}: {pt:?}");
+                }
+            }
+        }
     }
 }

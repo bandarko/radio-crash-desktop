@@ -7,15 +7,21 @@ pub const SILVER: Color32 = Color32::from_rgb(190, 189, 181);
 #[serde(rename_all = "snake_case")]
 pub enum Skin {
     AnalogSilver,
+    AnalogGlass,
     #[default]
     #[serde(other)]
     VfdBlack,
 }
 impl Skin {
+    pub const ALL: [Self; 3] = [Self::VfdBlack, Self::AnalogSilver, Self::AnalogGlass];
+    pub fn is_analog(self) -> bool {
+        matches!(self, Self::AnalogSilver | Self::AnalogGlass)
+    }
     pub fn label(self) -> &'static str {
         match self {
             Self::VfdBlack => "VFD Digital - Black Aluminium",
             Self::AnalogSilver => "Analog VU - Silver Aluminium",
+            Self::AnalogGlass => "Analog VU - Ivory Glass",
         }
     }
 }

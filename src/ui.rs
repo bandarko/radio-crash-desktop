@@ -15,7 +15,7 @@ fn skin_selector(ui: &mut Ui, selected: &mut Skin) {
     ComboBox::from_label("Receiver skin")
         .selected_text(selected.label())
         .show_ui(ui, |ui| {
-            for skin in [Skin::VfdBlack, Skin::AnalogSilver] {
+            for skin in Skin::ALL {
                 ui.selectable_value(selected, skin, skin.label());
             }
         });
@@ -89,10 +89,10 @@ impl RadioApp {
         cc.egui_ctx.set_visuals(Visuals::dark());
         let mut settings = Settings::load();
         if let Some(name) = std::env::args().skip_while(|a| a != "--skin").nth(1) {
-            settings.skin = if name == "analog-silver" {
-                Skin::AnalogSilver
-            } else {
-                Skin::VfdBlack
+            settings.skin = match name.as_str() {
+                "analog-silver" => Skin::AnalogSilver,
+                "analog-glass" => Skin::AnalogGlass,
+                _ => Skin::VfdBlack,
             };
         }
         if settings.start_minimized {
@@ -215,7 +215,7 @@ impl RadioApp {
             })
             / 44.;
         let c = r.center();
-        let analog = self.settings.skin == Skin::AnalogSilver;
+        let analog = self.settings.skin.is_analog();
         let silver = if analog {
             Color32::from_gray(43)
         } else {
@@ -289,7 +289,7 @@ impl RadioApp {
                     p.add(Shape::line(arc, Stroke::new(s, silver)));
                 }
             }
-            "settings" => {
+            "settings" if !analog => {
                 let pts: Vec<_> = (0..48)
                     .map(|i| {
                         let a = i as f32 / 48. * std::f32::consts::TAU;
@@ -451,7 +451,7 @@ impl RadioApp {
                         if ui.button("Night").clicked() { self.settings.vfd_brightness=0.45; }
                     });
                     ui.checkbox(&mut self.settings.standby_clock,"Show local clock when stopped");
-                    if self.settings.skin == Skin::AnalogSilver {
+                    if self.settings.skin.is_analog() {
                         ui.label("Classic analog VU · fixed 300 ms movement · scale to +3 VU");
                         ui.small("Full-wave average detection, sine calibrated. No RMS/Peak switching or peak-hold needle.");
                         let mut sensitivity = -self.settings.analog_reference_dbfs;
@@ -629,14 +629,14 @@ impl eframe::App for RadioApp {
             tray.update(
                 &snapshot.meters,
                 self.engine.running(),
-                if self.settings.skin == Skin::AnalogSilver {
+                if self.settings.skin.is_analog() {
                     self.settings.analog_reference_dbfs
                 } else {
                     self.settings.vu_reference_dbfs
                 },
                 self.settings.fast_vu,
                 self.settings.vu_response,
-                self.settings.skin == Skin::AnalogSilver,
+                self.settings.skin.is_analog(),
             );
             tray.poll()
         } else {
@@ -749,13 +749,13 @@ impl eframe::App for RadioApp {
         let rect = |x, y, w, h| panel.rect([x, y, w, h]);
         let p = ui.painter().clone();
         p.rect_filled(area, 0., Color32::TRANSPARENT);
-        let analog = self.settings.skin == Skin::AnalogSilver;
+        let analog = self.settings.skin.is_analog();
         let controls = panel::Controls::for_skin(self.settings.skin);
         let hd = snap.bitrate.is_some_and(|v| v >= self.settings.hd_kbps) && self.engine.running();
         if analog {
             self.analog
                 .get_or_insert_with(|| crate::analog::AnalogSkin::new(&ctx))
-                .background(&p, panel);
+                .background(&p, panel, self.settings.skin);
         } else {
             self.materials.paint(&p, rect(0., 0., 1200., 440.));
             self.materials
@@ -827,7 +827,7 @@ impl eframe::App for RadioApp {
             );
             self.graphics.paint(
                 ui.painter(),
-                panel.rect(crate::analog::GLASS),
+                panel.rect(crate::analog::layout(self.settings.skin).glass),
                 true,
                 self.settings.vfd_brightness,
                 0.,
@@ -1365,7 +1365,7 @@ mod interaction_tests {
         }
         let ctx = Context::default();
         let mut selected = Skin::VfdBlack;
-        for next in [Skin::AnalogSilver, Skin::VfdBlack] {
+        for next in [Skin::AnalogSilver, Skin::AnalogGlass, Skin::VfdBlack] {
             draw(&ctx, &mut selected, vec![]);
             let out = draw(&ctx, &mut selected, vec![]);
             let point = label(&out, selected.label());

@@ -1,3 +1,12 @@
+# Radio Crash Desktop 1.4.1 (local owner preview)
+
+- Third optional skin: Analog VU - Ivory Glass. One continuous warm ivory backplate behind shared glass, live now-playing lettering in the centre, a large round right-hand volume knob, and functional controls underneath.
+- Refined Analog VU - Silver Aluminium: slightly narrower instrument apertures, a wider central information display, and a smaller round volume knob.
+- Both silver SETTINGS buttons have clean metal caps, with the SETTINGS label underneath and no black gear or LED.
+- Skin selection, illumination, standby clock and analog sensitivity persist. VFD Digital - Black Aluminium remains the default.
+- Both analog skins retain the approved fixed classical 300 ms VU detector and +3 VU scale. Playback, detector calibration and separate digital response preferences are unchanged.
+- Local preview only. Publication requires owner testing and explicit approval. Windows build validation is separate from physical Windows runtime testing.
+
 # Radio Crash Desktop 1.4.0
 
 - New optional Analog VU - Silver Aluminium skin in Settings > Receiver skin. VFD Digital - Black Aluminium remains the default, and the selected skin is remembered.

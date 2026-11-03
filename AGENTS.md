@@ -14,3 +14,8 @@ Aluminium is optional and saves its selection. Its detector is fixed classical
 full-wave average VU with 300 ms movement and a scale ending at +3 VU. Only
 analog display level is adjustable; preserve the separate digital RMS/Peak
 preferences. All instruments must use actual consumed playback PCM.
+
+Analog VU - Ivory Glass is a third optional skin, sharing exactly the same fixed
+analog detector and sensitivity. Its continuous ivory centre has no dark display
+rectangle. Any future material/layout change must keep native control geometry
+aligned with the photographed controls at compact and large window sizes.

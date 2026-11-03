@@ -189,6 +189,12 @@ mod tests {
         assert_eq!(restored.vu_response, VuResponse::Peak);
         assert_eq!(restored.vu_reference_dbfs, -18.);
         assert_eq!(restored.volume, 0.39);
+        analog.skin = Skin::AnalogGlass;
+        let glass = Settings::decode(&serde_json::to_vec(&analog).unwrap()).unwrap();
+        assert_eq!(glass.skin, Skin::AnalogGlass);
+        assert_eq!(glass.analog_reference_dbfs, -10.);
+        assert_eq!(glass.vu_response, VuResponse::Peak);
+        assert_eq!(glass.vu_reference_dbfs, -18.);
         assert_eq!(
             Settings::decode(br#"{"skin":"future"}"#).unwrap().skin,
             Skin::VfdBlack

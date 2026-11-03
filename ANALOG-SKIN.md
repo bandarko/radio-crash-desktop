@@ -1,6 +1,6 @@
-# Analog VU - Silver Aluminium
+# Optional analog skins
 
-Optional skin in Settings > Receiver skin. VFD Digital - Black Aluminium is
+Select Analog VU - Silver Aluminium or Analog VU - Ivory Glass in Settings > Receiver skin. VFD Digital - Black Aluminium is
 still the default for fresh and upgraded configurations without a saved skin.
 Switching skins does not restart playback. Skin selection persists.
 
@@ -40,7 +40,7 @@ Design sources (not a certification claim):
 Deterministic tests cover sine calibration at 44.1/48/96 kHz, 300 ms rise and
 return, overshoot, stereo independence, pulse response, packet boundaries,
 nonfinite sample safety and current-linear +3 scale placement. Separate egui
-pointer tests cover both layouts at compact/full sizes and 100/125/150/200% DPI.
+pointer tests cover all three layouts at compact/full sizes and 100/125/150/200% DPI.
 Native Windows pointer/GPU behavior still requires physical owner testing.
 
 ## Owner preview and release
@@ -64,3 +64,20 @@ Owner must judge the revised movement locally before publication.
 Visual comparison viewed: https://www.youtube.com/watch?v=kPy2RFPY0Yw
 (Shinyas Studio, Sifam R22 vs AL-19). This is a visual reference, not a
 calibration recording of our radio stream or a compliance certificate.
+
+
+## 1.4.1 local layout review
+
+Silver Aluminium keeps its separate windows, with a slightly wider now-playing
+display, narrower inner instrument edges and a smaller circular volume knob.
+Ivory Glass is the third skin: two instruments and dark song lettering share
+one illuminated ivory backplate, with a round volume knob on the right and
+four functional buttons below. Both use the exact same approved detector and
+sensitivity. No new signal processing, detector profile or volume gain change.
+
+The previous substrate aspect mismatch is removed: new materials match the
+1200x440 logical panel to within 0.14%. One uniform panel transform drives
+painting, circular volume index, control hit targets and 90-degree needles.
+Texture sources are tiled to respect egui's initial 2048 texture limit.
+
+This is a local owner preview only, not a published release.

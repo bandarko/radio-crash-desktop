@@ -31,15 +31,18 @@ impl Controls {
                 knob_center: [911., 319.],
                 knob_radius: 54.,
             },
-            crate::skins::Skin::AnalogSilver => Self {
-                power: crate::analog::POWER,
-                play: crate::analog::PLAY,
-                mute: crate::analog::MUTE,
-                settings: crate::analog::SETTINGS,
-                volume: crate::analog::KNOB,
-                knob_center: [601.5, 307.],
-                knob_radius: 70.,
-            },
+            skin @ (crate::skins::Skin::AnalogSilver | crate::skins::Skin::AnalogGlass) => {
+                let l = crate::analog::layout(skin);
+                Self {
+                    power: l.power,
+                    play: l.play,
+                    mute: l.mute,
+                    settings: l.settings,
+                    volume: l.knob,
+                    knob_center: [l.knob[0] + l.knob[2] * 0.5, l.knob[1] + l.knob[3] * 0.5],
+                    knob_radius: l.knob[2] * 0.5,
+                }
+            }
         }
     }
 }
@@ -145,10 +148,7 @@ mod tests {
 
     #[test]
     fn both_skins_accept_button_centres_and_corners_without_volume_overlap() {
-        for skin in [
-            crate::skins::Skin::VfdBlack,
-            crate::skins::Skin::AnalogSilver,
-        ] {
+        for skin in crate::skins::Skin::ALL {
             for dpi in [1., 1.25, 1.5, 2.] {
                 for size in [
                     vec2(560., 206.),

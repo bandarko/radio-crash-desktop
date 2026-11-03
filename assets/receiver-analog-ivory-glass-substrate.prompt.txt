@@ -1,0 +1,8 @@
+Use case: precise-object-edit
+Asset type: empty photographic material substrate for a real native desktop radio application, not a finished mockup.
+Edit target: the attached approved silver receiver with ONE shared warm ivory glass panel. Preserve its exact layout, materials, circular knob, lighting, control locations, dimensions and 2070x760 composition.
+Remove ALL printed content INSIDE the entire warm glass: every VU scale, tick, numeral, VU letters, LEFT/RIGHT label, needle and hub, all artist/title/status/codec/bitrate/sample-rate text. Leave only the beautifully illuminated uninterrupted empty ivory backplate and glass with its original recess and reflections. Do not add a dark central display or vertical partitions.
+Remove ONLY the active symbols from the physical buttons: cyan power indicator, stop square, mute speaker, settings gear. Buttons remain empty metal.
+Remove the black position index from the large volume knob but preserve its circular metal face and perimeter tick marks.
+Keep the engraved exterior labels POWER, PLAY / STOP, MUTE, SETTINGS, VOLUME, INTERNET RADIO RECEIVER, SINCE 1986, and small radio crash exterior lettering.
+Outside the receiver must be transparent alpha, not a rectangular dark scene. Preserve feet and the thin top edge. Do not crop device or alter geometry. No new text or controls. The app will render every measurement, needle, playback symbol and song live at runtime.
