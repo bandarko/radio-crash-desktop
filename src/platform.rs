@@ -303,6 +303,72 @@ pub fn receiver_window_report(window: &winit::window::Window) -> serde_json::Val
     serde_json::json!({"native_style":style.map(|s|format!("0x{s:08x}")),"caption_or_resize_frame":style.map(|s|s&(WS_CAPTION|WS_THICKFRAME)!=0),"popup":style.map(|s|s&WS_POPUP!=0),"client_origin_physical":position(window.inner_position()),"outer_origin_physical":position(window.outer_position()),"client_size_physical":[window.inner_size().width,window.inner_size().height],"outer_size_physical":[window.outer_size().width,window.outer_size().height],"native_scale_factor":window.scale_factor()})
 }
 
+/// Move our frameless receiver in small nonblocking GUI ticks. Winit already
+/// captures client-area button drags; do not call drag_window/SC_MOVE here.
+#[cfg(target_os = "windows")]
+#[derive(Default)]
+pub struct ReceiverDrag {
+    track: crate::window_drag::DragTrack,
+}
+#[cfg(target_os = "windows")]
+impl ReceiverDrag {
+    pub fn active(&self) -> bool {
+        self.track.active()
+    }
+    pub fn begin(&mut self, window: &winit::window::Window) -> Result<(), String> {
+        use windows_sys::Win32::{
+            Foundation::{POINT, RECT},
+            UI::WindowsAndMessaging::*,
+        };
+        let hwnd = receiver_hwnd(window).ok_or("Receiver handle unavailable")?;
+        let mut cursor = POINT::default();
+        let mut rect = RECT::default();
+        // Own live root HWND on the GUI thread. Both queries use desktop pixels
+        // under the existing per-monitor-V2 process awareness.
+        unsafe {
+            if GetCursorPos(&mut cursor) == 0 || GetWindowRect(hwnd, &mut rect) == 0 {
+                return Err(std::io::Error::last_os_error().to_string());
+            }
+        }
+        self.track
+            .begin([cursor.x, cursor.y], [rect.left, rect.top]);
+        Ok(())
+    }
+    pub fn tick(&mut self, window: &winit::window::Window, held: bool) -> Result<(), String> {
+        use windows_sys::Win32::{Foundation::POINT, UI::WindowsAndMessaging::*};
+        if !held {
+            self.track.cancel();
+            return Ok(());
+        }
+        if !self.active() {
+            return Ok(());
+        }
+        let hwnd = receiver_hwnd(window).ok_or("Receiver handle unavailable")?;
+        let mut cursor = POINT::default();
+        unsafe {
+            if GetCursorPos(&mut cursor) == 0 {
+                self.track.cancel();
+                return Err(std::io::Error::last_os_error().to_string());
+            }
+            if let Some([x, y]) = self.track.step([cursor.x, cursor.y], true)
+                && SetWindowPos(
+                    hwnd,
+                    std::ptr::null_mut(),
+                    x,
+                    y,
+                    0,
+                    0,
+                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+                ) == 0
+            {
+                self.track.cancel();
+                return Err(std::io::Error::last_os_error().to_string());
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(all(test, target_os = "windows"))]
 mod windows_window_tests {
     use super::*;

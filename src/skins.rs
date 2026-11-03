@@ -131,6 +131,12 @@ impl Materials {
         );
         p.image(self.logo.id(), r, uv, Color32::WHITE);
     }
+    pub fn logo_silver(&self, p: &Painter, r: Rect) {
+        // The exact same owner-supplied letter pixels as the VFD fascia.
+        // Only the ink tint changes; black source pixels are transparent coverage.
+        let uv = Rect::from_min_max(pos2(25. / 960., 97. / 264.), pos2(925. / 960., 164. / 264.));
+        p.image(self.logo.id(), r, uv, Color32::from_rgb(28, 28, 26));
+    }
     pub fn paint(&self, p: &Painter, r: Rect) {
         let uv = Rect::from_min_max(Pos2::ZERO, pos2(1., 1.));
         let split =

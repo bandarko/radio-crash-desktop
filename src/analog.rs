@@ -113,8 +113,8 @@ impl AnalogSkin {
         Self {
             silver: Photo::load(
                 ctx,
-                include_bytes!("../assets/receiver-analog-silver-v2-substrate.png"),
-                "analog-silver-v2",
+                include_bytes!("../assets/receiver-analog-silver-v3-bare-metal.png"),
+                "analog-silver-v3-bare-metal",
             ),
             glass: None,
             movement: dsp_analog::Reading::default(),
@@ -122,15 +122,14 @@ impl AnalogSkin {
     }
     pub fn background(&mut self, p: &Painter, panel: Panel, skin: Skin) {
         if skin == Skin::AnalogGlass {
-            self.glass
-                .get_or_insert_with(|| {
-                    Photo::load(
-                        p.ctx(),
-                        include_bytes!("../assets/receiver-analog-ivory-glass-substrate.png"),
-                        "analog-ivory-glass",
-                    )
-                })
-                .paint(p, panel);
+            let photo = self.glass.get_or_insert_with(|| {
+                Photo::load(
+                    p.ctx(),
+                    include_bytes!("../assets/receiver-analog-ivory-glass-v2-bare-metal.png"),
+                    "analog-ivory-glass-v2-bare-metal",
+                )
+            });
+            photo.paint(p, panel);
         } else {
             self.silver.paint(p, panel);
         }

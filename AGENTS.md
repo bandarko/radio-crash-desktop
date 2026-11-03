@@ -24,3 +24,8 @@ Owner-approved geometry direction for Ivory Glass: straight horizontal scale
 and label rows with fanned divisions, not an oval/arc. Needle travel stays
 circular and divisions must intersect its actual measurement ray. Keep Silver
 Aluminium's existing curved card and low centre window unchanged.
+
+Both silver wordmarks must use the exact supplied station bitmap, like VFD,
+with transparent coverage and dark ink on aluminium. Do not generate/retype them.
+Windows chassis drags must not enter native SC_MOVE; keep frame updates active
+and use one consistent physical screen coordinate system to avoid DPI offsets.

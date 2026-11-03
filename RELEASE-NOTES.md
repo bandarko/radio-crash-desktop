@@ -1,5 +1,7 @@
 # Radio Crash Desktop 1.4.1 (local owner preview)
 
+- Both silver skins now use the exact supplied Radio Crash logo bitmap, tinted as dark ink directly on aluminium. The photographic header is continuous bare aluminium, with no rectangular cover or logo backdrop.
+- Windows chassis dragging uses nonmodal physical desktop-coordinate movement so the rendering loop can continue while the mouse is held. Mouse-up, focus loss and Escape cancel movement. Physical Windows runtime review remains pending.
 - Third optional skin: Analog VU - Ivory Glass. One continuous warm ivory backplate behind shared glass, live now-playing lettering in the centre, a large round right-hand volume knob, and functional controls underneath.
 - Ivory Glass instruments use a straight horizontal scale and fanned radial divisions. Needle length is fixed and every division intersects the actual needle ray; the fixed +3 VU calibration and 300 ms detector are preserved.
 - Refined Analog VU - Silver Aluminium: slightly narrower instrument apertures, a wider central information display, and a smaller round volume knob.

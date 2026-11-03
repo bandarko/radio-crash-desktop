@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Edit target: attached existing shared-glass silver receiver material substrate.
+Make one TINY LOCAL REMOVAL: remove ONLY the 'radio crash' letters in the upper left of the aluminium. Reconstruct the ORIGINAL brushed aluminium directly under those letter shapes, matching the surrounding continuous horizontal grain, light falloff and silver color perfectly. It must be one uninterrupted metal face. No plaque, no rectangular patch, no logo box, no label background, no darker/lighter block, no badge, no border or halo.
+Do not draw any replacement logo or new letters. The native app will put the exact supplied original logo pixels over bare metal.
+Preserve EVERY other detail of this exact approved material: the ONE large common warm ivory empty glass, ROUND LARGE volume knob to the RIGHT, four empty button caps underneath, all existing exterior labels, silver grain, screws, feet, lighting and proportions. Keep all displays and buttons blank. No scales, needles, text or icons added.
+Keep exact original wide 2069x760 canvas, straight-on camera, transparent exterior alpha and complete receiver. Nothing except the old upper-left logo lettering is altered.

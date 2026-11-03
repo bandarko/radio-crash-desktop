@@ -48,3 +48,22 @@ The original v4 fascia and HD Radio lens remain unchanged. Built-in imagegen edi
 - The third skin's now-playing text is dark ink directly on the illuminated shared backplate, without a separate black rectangle. Enhanced optics cover the shared aperture rather than the VFD fascia shader.
 
 Owner refinement: both silver SETTINGS caps remain bare metal. Their functional hit targets and exterior labels are unchanged; no gear or LED is drawn. VFD controls retain their existing symbols.
+
+
+## Exact station lettering on silver skins
+
+Both analog skins draw the unchanged owner-supplied `radio-crash-logo-user.png`
+using the same crop/coverage as the black VFD skin, with dark ink tint. No font
+substitute or generated letter shapes are used. The original letters were removed
+from the photographic substrates using built-in imagegen. No rectangular cover,
+mesh patch, label background or separate material is drawn underneath the logo.
+
+- Silver runtime material: `assets/receiver-analog-silver-v3-bare-metal.png`.
+  Exact edit prompt: `assets/receiver-analog-silver-v3-bare-metal.prompt.txt`.
+  Generated source: `exec-64fccf2b-eb8a-44bf-8477-f942574e11b3.png`.
+- Ivory Glass runtime material: `assets/receiver-analog-ivory-glass-v2-bare-metal.png`.
+  Exact edit prompt: `assets/receiver-analog-ivory-glass-v2-bare-metal.prompt.txt`.
+  Generated source: `exec-ee090682-6264-4d45-b10c-c98deb4eadd6.png`.
+
+Only the native exact logo pixels appear on the continuous photographic metal.
+The earlier sampled header patch was rejected by the owner and removed entirely.

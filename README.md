@@ -172,3 +172,11 @@ Website links remain:
 - Windows: https://github.com/bandarko/radio-crash-desktop/releases/latest/download/Radio-Crash-Desktop-Windows-x64.zip
 
 Packaging-only refreshes preserve existing executable bytes and signed Mac app contents. They do not change the installed app version or promote test releases to stable.
+
+
+Windows chassis dragging uses physical screen coordinates and nonmodal position
+updates rather than the native `SC_MOVE` loop. The existing render/repaint loop
+continues during client-area dragging, with cancellation on release, focus loss
+or Escape. Native macOS window dragging is unchanged. See the Microsoft
+[move/size loop description](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-entersizemove).
+Physical Windows interaction testing of the local preview is still pending.

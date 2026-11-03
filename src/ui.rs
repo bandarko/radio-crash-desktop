@@ -29,6 +29,8 @@ pub struct RadioApp {
     graphics: crate::graphics::Graphics,
     #[cfg(target_os = "windows")]
     receiver_window: Option<std::sync::Arc<winit::window::Window>>,
+    #[cfg(target_os = "windows")]
+    receiver_drag: platform::ReceiverDrag,
     clock: crate::clock_face::ClockFace,
     clock_updated: Instant,
     observed_window: Vec2,
@@ -115,6 +117,8 @@ impl RadioApp {
             graphics,
             #[cfg(target_os = "windows")]
             receiver_window: cc.winit_window().cloned(),
+            #[cfg(target_os = "windows")]
+            receiver_drag: platform::ReceiverDrag::default(),
             clock: crate::clock_face::ClockFace::now(),
             clock_updated: Instant::now(),
             observed_window: Vec2::ZERO,
@@ -595,10 +599,18 @@ impl RadioApp {
 impl eframe::App for RadioApp {
     fn logic(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         #[cfg(target_os = "windows")]
-        if let Some(window) = &self.receiver_window
-            && let Err(e) = platform::maintain_receiver_frame(window)
-        {
-            log::warn!("Receiver frame: {e}");
+        if let Some(window) = &self.receiver_window {
+            if let Err(e) = platform::maintain_receiver_frame(window) {
+                log::warn!("Receiver frame: {e}");
+            }
+            let held =
+                ctx.input(|i| i.focused && i.pointer.primary_down() && !i.key_pressed(Key::Escape));
+            if let Err(e) = self.receiver_drag.tick(window, held) {
+                log::warn!("Receiver move: {e}");
+            }
+            if self.receiver_drag.active() {
+                ctx.request_repaint_after(Duration::from_millis(16));
+            }
         }
         if self.clock_updated.elapsed() >= Duration::from_secs(1) {
             self.clock = crate::clock_face::ClockFace::now();
@@ -756,6 +768,8 @@ impl eframe::App for RadioApp {
             self.analog
                 .get_or_insert_with(|| crate::analog::AnalogSkin::new(&ctx))
                 .background(&p, panel, self.settings.skin);
+            self.materials
+                .logo_silver(&p, rect(72., 60., 190., 190. * 67. / 900.));
         } else {
             self.materials.paint(&p, rect(0., 0., 1200., 440.));
             self.materials
@@ -771,6 +785,17 @@ impl eframe::App for RadioApp {
             Sense::click_and_drag(),
         );
         if drag.drag_started() {
+            #[cfg(target_os = "windows")]
+            {
+                if drag.dragged_by(PointerButton::Primary)
+                    && let Some(window) = &self.receiver_window
+                    && let Err(e) = self.receiver_drag.begin(window)
+                {
+                    log::warn!("Receiver move: {e}");
+                }
+                ctx.request_repaint();
+            }
+            #[cfg(not(target_os = "windows"))]
             ctx.send_viewport_cmd(ViewportCommand::StartDrag);
         }
         drag.context_menu(|ui| {

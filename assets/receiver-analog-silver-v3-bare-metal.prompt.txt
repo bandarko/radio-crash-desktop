@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Edit target: attached existing silver radio receiver material substrate.
+Make one TINY LOCAL REMOVAL: remove ONLY the 'radio crash' letters in the upper left of the aluminium. Reconstruct the ORIGINAL brushed aluminium directly under those letter shapes, matching the surrounding continuous horizontal grain, light falloff and silver color perfectly. It must be one uninterrupted metal face. No plaque, no rectangular patch, no logo box, no label background, no darker/lighter block, no badge, no border or halo.
+Do not draw a replacement logo or any new lettering. The native app will put the exact supplied logo pixels over the bare metal.
+Preserve EVERY other detail of this exact existing image: the two separate amber meter apertures, small low-height black centre display, round CENTRAL volume knob, all exterior button labels, screw and foot positions, geometry, light, silver texture. Nothing changes outside the old logo letters.
+Keep exact original wide 2070x760 canvas, straight-on camera, transparent exterior alpha and complete receiver. No scales, needles, playback symbols, metadata or other contents in the empty displays/buttons.
