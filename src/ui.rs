@@ -94,6 +94,7 @@ impl RadioApp {
             settings.skin = match name.as_str() {
                 "analog-silver" => Skin::AnalogSilver,
                 "analog-glass" => Skin::AnalogGlass,
+                "analog-walnut" => Skin::AnalogWalnut,
                 _ => Skin::VfdBlack,
             };
         }
@@ -220,12 +221,19 @@ impl RadioApp {
             / 44.;
         let c = r.center();
         let analog = self.settings.skin.is_analog();
-        let silver = if analog {
+        let walnut = self.settings.skin == Skin::AnalogWalnut;
+        let silver = if analog && !walnut {
             Color32::from_gray(43)
         } else {
             SILVER
         };
-        let ink = if analog {
+        let ink = if walnut {
+            if lit {
+                Color32::from_rgb(237, 206, 160)
+            } else {
+                Color32::from_gray(166)
+            }
+        } else if analog {
             Color32::from_rgb(36, 31, 24)
         } else if lit {
             CYAN
@@ -768,8 +776,12 @@ impl eframe::App for RadioApp {
             self.analog
                 .get_or_insert_with(|| crate::analog::AnalogSkin::new(&ctx))
                 .background(&p, panel, self.settings.skin);
-            self.materials
-                .logo_silver(&p, rect(72., 60., 190., 190. * 67. / 900.));
+            let logo = rect(72., 60., 190., 190. * 67. / 900.);
+            if self.settings.skin == Skin::AnalogWalnut {
+                self.materials.logo(&p, logo);
+            } else {
+                self.materials.logo_silver(&p, logo);
+            }
         } else {
             self.materials.paint(&p, rect(0., 0., 1200., 440.));
             self.materials
@@ -1256,7 +1268,7 @@ impl eframe::App for RadioApp {
             [center + d * radius * 0.72, center + d * radius * 0.87],
             Stroke::new(
                 1.4 * scale,
-                if analog {
+                if analog && self.settings.skin != Skin::AnalogWalnut {
                     Color32::from_gray(26)
                 } else {
                     Color32::from_rgb(213, 214, 193)
@@ -1390,7 +1402,12 @@ mod interaction_tests {
         }
         let ctx = Context::default();
         let mut selected = Skin::VfdBlack;
-        for next in [Skin::AnalogSilver, Skin::AnalogGlass, Skin::VfdBlack] {
+        for next in [
+            Skin::AnalogSilver,
+            Skin::AnalogGlass,
+            Skin::AnalogWalnut,
+            Skin::VfdBlack,
+        ] {
             draw(&ctx, &mut selected, vec![]);
             let out = draw(&ctx, &mut selected, vec![]);
             let point = label(&out, selected.label());

@@ -31,7 +31,9 @@ impl Controls {
                 knob_center: [911., 319.],
                 knob_radius: 54.,
             },
-            skin @ (crate::skins::Skin::AnalogSilver | crate::skins::Skin::AnalogGlass) => {
+            skin @ (crate::skins::Skin::AnalogSilver
+            | crate::skins::Skin::AnalogGlass
+            | crate::skins::Skin::AnalogWalnut) => {
                 let l = crate::analog::layout(skin);
                 Self {
                     power: l.power,

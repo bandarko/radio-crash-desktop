@@ -1,4 +1,4 @@
-//! Photographic silver analog skins. Instruments and metadata use live playback PCM.
+//! Photographic analog skins. Instruments and metadata use live playback PCM.
 use crate::{
     audio::Snapshot,
     clock_face::ClockFace,
@@ -28,9 +28,17 @@ pub struct Layout {
     vu_offset: f32,
     display: [f32; 4],
     ivory: bool,
+    dark: bool,
 }
 pub fn layout(skin: Skin) -> Layout {
     match skin {
+        Skin::AnalogWalnut => Layout {
+            pivots: [[255.5, 236.], [946.5, 236.]],
+            radius: 121.,
+            vu_offset: 37.,
+            dark: true,
+            ..layout(Skin::AnalogSilver)
+        },
         Skin::AnalogGlass => Layout {
             power: [117., 315., 73., 32.],
             play: [332., 315., 164., 32.],
@@ -44,6 +52,7 @@ pub fn layout(skin: Skin) -> Layout {
             vu_offset: 58.,
             display: [389., 147., 228., 96.],
             ivory: true,
+            dark: false,
         },
         _ => Layout {
             power: [74., 299., 58., 34.],
@@ -58,6 +67,7 @@ pub fn layout(skin: Skin) -> Layout {
             vu_offset: 132.,
             display: [467., 145., 266., 65.],
             ivory: false,
+            dark: false,
         },
     }
 }
@@ -106,6 +116,7 @@ impl Photo {
 pub struct AnalogSkin {
     silver: Photo,
     glass: Option<Photo>,
+    walnut: Option<Photo>,
     movement: dsp_analog::Reading,
 }
 impl AnalogSkin {
@@ -117,11 +128,22 @@ impl AnalogSkin {
                 "analog-silver-v3-bare-metal",
             ),
             glass: None,
+            walnut: None,
             movement: dsp_analog::Reading::default(),
         }
     }
     pub fn background(&mut self, p: &Painter, panel: Panel, skin: Skin) {
-        if skin == Skin::AnalogGlass {
+        if skin == Skin::AnalogWalnut {
+            self.walnut
+                .get_or_insert_with(|| {
+                    Photo::load(
+                        p.ctx(),
+                        include_bytes!("../assets/receiver-analog-walnut-v1.png"),
+                        "analog-walnut-v1",
+                    )
+                })
+                .paint(p, panel);
+        } else if skin == Skin::AnalogGlass {
             let photo = self.glass.get_or_insert_with(|| {
                 Photo::load(
                     p.ctx(),
@@ -281,6 +303,17 @@ impl AnalogSkin {
         let scale_point = |t: f32, offset: f32| at(scale_offset(l, t, offset));
         let face = panel.rect(l.faces[c]);
         let p = p.with_clip_rect(face);
+        let ink = if l.dark {
+            Color32::from_rgb(232, 206, 177)
+        } else {
+            INK
+        };
+        let red = if l.dark {
+            Color32::from_rgb(244, 135, 100)
+        } else {
+            RED
+        };
+        let flat = l.ivory || l.dark;
         if !l.ivory {
             let light = if power { settings.vfd_brightness } else { 0.16 };
             p.rect_filled(
@@ -289,15 +322,27 @@ impl AnalogSkin {
                 Color32::from_black_alpha(((1. - light) * 175.) as u8),
             );
         }
+        if l.dark {
+            // Steady edge lamp, not a fabricated signal bar. It follows power and dimmer only.
+            let brightness = if power { settings.vfd_brightness } else { 0.04 };
+            let lamp = panel.rect([l.faces[c][0] + 18., 228., l.faces[c][2] - 36., 0.8]);
+            for (spread, alpha) in [(3., 6.), (1.5, 15.), (0., 125.)] {
+                p.rect_filled(
+                    lamp.expand(spread * panel.scale),
+                    0.,
+                    Color32::from_rgba_unmultiplied(114, 160, 235, (alpha * brightness) as u8),
+                );
+            }
+        }
         // Linear deflection per coil current, logarithmically spaced dB labels, fixed +3 VU.
         for db in -20..=3 {
             let t = 10f32.powf((db as f32 - 3.) / 20.);
             p.line_segment(
                 [
-                    scale_point(t, if l.ivory { 4. } else { 0. }),
-                    scale_point(t, if l.ivory { 27. } else { 10. }),
+                    scale_point(t, if flat { 4. } else { 0. }),
+                    scale_point(t, if flat { 27. } else { 10. }),
                 ],
-                Stroke::new(0.9 * panel.scale, if db > 0 { RED } else { INK }),
+                Stroke::new(0.9 * panel.scale, if db > 0 { red } else { ink }),
             );
         }
         for (db, text) in [
@@ -314,14 +359,14 @@ impl AnalogSkin {
         ] {
             let t = 10f32.powf((db - 3.) / 20.);
             p.text(
-                scale_point(t, if l.ivory { 45. } else { 24. }),
+                scale_point(t, if flat { 45. } else { 24. }),
                 Align2::CENTER_CENTER,
                 text,
-                FontId::proportional(if l.ivory { 10.5 } else { 12. } * panel.scale),
-                if db > 0. { RED } else { INK },
+                FontId::proportional(if flat { 10.5 } else { 12. } * panel.scale),
+                if db > 0. { red } else { ink },
             );
         }
-        if l.ivory {
+        if flat {
             // A straight printed baseline, with radial ticks converging on the shaft.
             // Scale labels lie on a second horizontal plane, rather than on an arc.
             let depth = flat_scale_depth(l);
@@ -330,7 +375,7 @@ impl AnalogSkin {
                     at(vec2(-depth - 18., -depth)),
                     at(vec2(depth + 18., -depth)),
                 ],
-                Stroke::new(0.9 * panel.scale, INK),
+                Stroke::new(0.9 * panel.scale, ink),
             );
         } else {
             for (start, end, color, width) in [
@@ -348,14 +393,14 @@ impl AnalogSkin {
             Align2::CENTER_CENTER,
             "VU",
             FontId::proportional(22. * panel.scale),
-            INK,
+            ink,
         );
         p.text(
             face.left_bottom() + vec2(7., -20.) * panel.scale,
             Align2::LEFT_CENTER,
             if c == 0 { "LEFT" } else { "RIGHT" },
             FontId::monospace(8. * panel.scale),
-            INK,
+            ink,
         );
         let t = dsp_analog::position(
             self.movement.channels[c].position,
@@ -372,14 +417,28 @@ impl AnalogSkin {
         }
         p.line_segment(
             [hub, tip],
-            Stroke::new(1.7 * panel.scale, Color32::from_rgb(168, 34, 19)),
+            Stroke::new(
+                1.7 * panel.scale,
+                if l.dark {
+                    Color32::from_rgb(236, 231, 217)
+                } else {
+                    Color32::from_rgb(168, 34, 19)
+                },
+            ),
         );
         p.line_segment(
             [
                 hub - vec2(0.35, 0.) * panel.scale,
                 tip - vec2(0.35, 0.) * panel.scale,
             ],
-            Stroke::new(0.45 * panel.scale, Color32::from_rgb(245, 111, 65)),
+            Stroke::new(
+                0.45 * panel.scale,
+                if l.dark {
+                    Color32::WHITE
+                } else {
+                    Color32::from_rgb(245, 111, 65)
+                },
+            ),
         );
         skins::gradient(
             &p,
@@ -393,12 +452,18 @@ fn flat_scale_depth(l: Layout) -> f32 {
     l.radius - 43.
 }
 fn needle_length(l: Layout) -> f32 {
-    if l.ivory { 112. } else { l.radius + 11. }
+    if l.dark {
+        130.
+    } else if l.ivory {
+        112.
+    } else {
+        l.radius + 11.
+    }
 }
 /// Intersect the moving needle's ray with a horizontal scale plane.
 /// The detector still maps coil current to angle; changing the card never changes measurement.
 fn scale_offset(l: Layout, position: f32, offset: f32) -> Vec2 {
-    if l.ivory {
+    if l.ivory || l.dark {
         let ray = needle_offset(position, 1.);
         ray * ((flat_scale_depth(l) + offset) / -ray.y)
     } else {
@@ -446,7 +511,7 @@ mod geometry_tests {
     use super::*;
     #[test]
     fn real_needle_has_constant_length_and_ninety_degree_sweep() {
-        for skin in [Skin::AnalogSilver, Skin::AnalogGlass] {
+        for skin in Skin::ALL.into_iter().filter(|s| s.is_analog()) {
             let length = needle_length(layout(skin));
             for i in 0..=100 {
                 assert!((needle_offset(i as f32 / 100., length).length() - length).abs() < 0.0001);
@@ -457,19 +522,21 @@ mod geometry_tests {
     }
     #[test]
     fn shared_glass_scale_is_straight_and_each_tick_matches_the_needle_ray() {
-        let l = layout(Skin::AnalogGlass);
-        let mut previous = f32::NEG_INFINITY;
-        for i in 0..=100 {
-            let t = i as f32 / 100.;
-            let base = scale_offset(l, t, 0.);
-            assert!((base.y + flat_scale_depth(l)).abs() < 0.0001);
-            assert!(base.x > previous);
-            previous = base.x;
-            let ray = needle_offset(t, 1.);
-            for plane in [4., 27., 45.] {
-                let point = scale_offset(l, t, plane);
-                assert!((point.y + flat_scale_depth(l) + plane).abs() < 0.0001);
-                assert!((ray.x * point.y - ray.y * point.x).abs() < 0.0001);
+        for skin in [Skin::AnalogGlass, Skin::AnalogWalnut] {
+            let l = layout(skin);
+            let mut previous = f32::NEG_INFINITY;
+            for i in 0..=100 {
+                let t = i as f32 / 100.;
+                let base = scale_offset(l, t, 0.);
+                assert!((base.y + flat_scale_depth(l)).abs() < 0.0001);
+                assert!(base.x > previous);
+                previous = base.x;
+                let ray = needle_offset(t, 1.);
+                for plane in [4., 27., 45.] {
+                    let point = scale_offset(l, t, plane);
+                    assert!((point.y + flat_scale_depth(l) + plane).abs() < 0.0001);
+                    assert!((ray.x * point.y - ray.y * point.x).abs() < 0.0001);
+                }
             }
         }
     }
@@ -488,7 +555,7 @@ mod geometry_tests {
     }
     #[test]
     fn analog_knobs_are_round_and_display_does_not_overlap_instruments() {
-        for skin in [Skin::AnalogSilver, Skin::AnalogGlass] {
+        for skin in Skin::ALL.into_iter().filter(|s| s.is_analog()) {
             let l = layout(skin);
             assert_eq!(l.knob[2], l.knob[3]);
             let panel = Panel::new(Rect::from_min_size(Pos2::ZERO, vec2(1200., 440.)));
@@ -499,7 +566,11 @@ mod geometry_tests {
             for (face, pivot) in l.faces.into_iter().zip(l.pivots) {
                 for i in 0..=100 {
                     let pt = pos2(pivot[0], pivot[1])
-                        + scale_offset(l, i as f32 / 100., if l.ivory { 45. } else { 24. });
+                        + scale_offset(
+                            l,
+                            i as f32 / 100.,
+                            if l.ivory || l.dark { 45. } else { 24. },
+                        );
                     assert!(panel.rect(face).shrink(5.).contains(pt), "{skin:?}: {pt:?}");
                 }
             }

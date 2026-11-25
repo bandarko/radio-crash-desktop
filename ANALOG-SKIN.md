@@ -1,6 +1,6 @@
 # Optional analog skins
 
-Select Analog VU - Silver Aluminium or Analog VU - Ivory Glass in Settings > Receiver skin. VFD Digital - Black Aluminium is
+Select Analog VU - Silver Aluminium, Analog VU - Ivory Glass, or Analog VU - Walnut Studio in Settings > Receiver skin. VFD Digital - Black Aluminium is
 still the default for fresh and upgraded configurations without a saved skin.
 Switching skins does not restart playback. Skin selection persists.
 
@@ -93,3 +93,22 @@ reference, scale endpoint (+3 VU) or PCM. No amplifier watts or output power
 are inferred from the stream. Silver Aluminium keeps its approved curved scale
 and existing small centre window. The proposed taller centre was rejected and
 never integrated. No material asset was regenerated for this straight scale.
+
+## 1.5.0 Walnut Studio (local owner review)
+
+Fourth optional skin with walnut side cheeks, dark anodized brushed aluminium,
+smoked black meter windows and a warm amber now-playing display. The original
+station logo is painted in white directly on the metal. The existing three skins
+retain their materials and geometry; VFD Black remains the fresh-install default.
+
+Walnut uses the same fixed classical detector, +3 VU endpoint and saved analog
+sensitivity. Its straight scale has fanned ticks, ivory printing and white
+constant-length needles. Steady blue light at the bottom of each aperture is an
+edge lamp, never a signal bar. It follows illumination and power only.
+
+The common Silver control/aperture grid is retained; the new card changes only
+needle pivot/radius and face colors. All buttons and circular volume targets use
+the same uniform panel transform as the material. Skin choice serializes as
+`analog_walnut`. No dependencies or platform graphics requirements are added.
+
+Local candidate only. The owner must test and approve before GitHub publication.

@@ -1,3 +1,13 @@
+# Radio Crash Desktop 1.5.0 - local preview
+
+- New optional Analog VU - Walnut Studio skin: natural walnut side cheeks, dark brushed aluminium, smoked black instrument glass, warm ivory scales and fine white needles.
+- The supplied station logo appears as white ink directly on the dark metal, without a background plaque or generated lettering.
+- Independent left/right instruments use the existing fixed classical 300 ms full-wave-average detector, +3 VU scale and separate analog sensitivity. No audio processing or meter gain was changed.
+- The dark instruments use a straight printed scale with fanned divisions and constant-length circular needle travel. A steady blue edge lamp follows power and the illumination setting; it never simulates an audio reading.
+- Real artist/title, detected stream properties, long-text scrolling, standby clock and functional power, playback, mute and volume controls are retained.
+- Four skins are selectable and the selection is saved. VFD Digital - Black Aluminium stays the default. The three existing skins and their control geometry are retained.
+- Local owner review only. This candidate has not been approved for publication. Windows cross-build validation does not constitute physical Windows runtime verification.
+
 # Radio Crash Desktop 1.4.1
 
 - Both silver skins now use the exact supplied Radio Crash logo bitmap, tinted as dark ink directly on aluminium. The photographic header is continuous bare aluminium, with no rectangular cover or logo backdrop.
