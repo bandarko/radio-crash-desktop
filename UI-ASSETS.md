@@ -74,7 +74,7 @@ The earlier sampled header patch was rejected by the owner and removed entirely.
 - Runtime asset: `assets/receiver-analog-walnut-v1.png`. Exact prompt and input roles: `assets/receiver-analog-walnut-v1.prompt.txt`.
 - Generated source: `exec-cdaf7a9e-628f-45de-a757-8a603a8ac111.png`, copied into this repository before embedding. The original cache copy is retained.
 - Material/layout target: existing Silver Aluminium bare-metal substrate. The owner's supplied walnut-sided amplifier photograph is a material/mood reference only. No third-party wordmark or model number is copied.
-- The apertures and physical control locations retain the established Silver Aluminium logical grid. The new skin has black instrument cards, a straight scale with fanned ticks, white live needles and subdued steady blue edge lighting.
+- The apertures and physical control locations retain the established Silver Aluminium logical grid. The new skin has black instrument cards, a straight scale with fanned ticks, warm live needles and subdued steady amber edge lighting.
 - Source bitmap contains only materials and fixed functional exterior labels. Meter scale, needle, logo, metadata, clock and control states are native paintings. Every measured movement uses consumed PCM; the edge lamp is explicitly a constant illumination element.
 - The existing supplied station logo is composited directly in white on continuous metal. No sampled metal patch, plaque or generated lettering is used.
 - Texture loading is lazy per selected skin and preserves the same two-tile 2048-safe upload used by the other photographic skins.

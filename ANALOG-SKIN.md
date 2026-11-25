@@ -102,8 +102,8 @@ station logo is painted in white directly on the metal. The existing three skins
 retain their materials and geometry; VFD Black remains the fresh-install default.
 
 Walnut uses the same fixed classical detector, +3 VU endpoint and saved analog
-sensitivity. Its straight scale has fanned ticks, ivory printing and white
-constant-length needles. Steady blue light at the bottom of each aperture is an
+sensitivity. Its straight scale has fanned ticks, red-orange backlit printing and warm
+constant-length needles. Steady amber light at the bottom of each aperture is an
 edge lamp, never a signal bar. It follows illumination and power only.
 
 The common Silver control/aperture grid is retained; the new card changes only

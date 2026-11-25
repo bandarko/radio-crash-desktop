@@ -298,22 +298,15 @@ impl AnalogSkin {
         power: bool,
         l: Layout,
     ) {
+        if l.dark {
+            self.walnut_dial(p, panel, c, settings, power, l);
+            return;
+        }
         let [x, y] = l.pivots[c];
         let at = |offset: Vec2| panel.point(x + offset.x, y + offset.y);
         let scale_point = |t: f32, offset: f32| at(scale_offset(l, t, offset));
         let face = panel.rect(l.faces[c]);
         let p = p.with_clip_rect(face);
-        let ink = if l.dark {
-            Color32::from_rgb(232, 206, 177)
-        } else {
-            INK
-        };
-        let red = if l.dark {
-            Color32::from_rgb(244, 135, 100)
-        } else {
-            RED
-        };
-        let flat = l.ivory || l.dark;
         if !l.ivory {
             let light = if power { settings.vfd_brightness } else { 0.16 };
             p.rect_filled(
@@ -322,27 +315,15 @@ impl AnalogSkin {
                 Color32::from_black_alpha(((1. - light) * 175.) as u8),
             );
         }
-        if l.dark {
-            // Steady edge lamp, not a fabricated signal bar. It follows power and dimmer only.
-            let brightness = if power { settings.vfd_brightness } else { 0.04 };
-            let lamp = panel.rect([l.faces[c][0] + 18., 228., l.faces[c][2] - 36., 0.8]);
-            for (spread, alpha) in [(3., 6.), (1.5, 15.), (0., 125.)] {
-                p.rect_filled(
-                    lamp.expand(spread * panel.scale),
-                    0.,
-                    Color32::from_rgba_unmultiplied(114, 160, 235, (alpha * brightness) as u8),
-                );
-            }
-        }
         // Linear deflection per coil current, logarithmically spaced dB labels, fixed +3 VU.
         for db in -20..=3 {
             let t = 10f32.powf((db as f32 - 3.) / 20.);
             p.line_segment(
                 [
-                    scale_point(t, if flat { 4. } else { 0. }),
-                    scale_point(t, if flat { 27. } else { 10. }),
+                    scale_point(t, if l.ivory { 4. } else { 0. }),
+                    scale_point(t, if l.ivory { 27. } else { 10. }),
                 ],
-                Stroke::new(0.9 * panel.scale, if db > 0 { red } else { ink }),
+                Stroke::new(0.9 * panel.scale, if db > 0 { RED } else { INK }),
             );
         }
         for (db, text) in [
@@ -359,14 +340,14 @@ impl AnalogSkin {
         ] {
             let t = 10f32.powf((db - 3.) / 20.);
             p.text(
-                scale_point(t, if flat { 45. } else { 24. }),
+                scale_point(t, if l.ivory { 45. } else { 24. }),
                 Align2::CENTER_CENTER,
                 text,
-                FontId::proportional(if flat { 10.5 } else { 12. } * panel.scale),
-                if db > 0. { red } else { ink },
+                FontId::proportional(if l.ivory { 10.5 } else { 12. } * panel.scale),
+                if db > 0. { RED } else { INK },
             );
         }
-        if flat {
+        if l.ivory {
             // A straight printed baseline, with radial ticks converging on the shaft.
             // Scale labels lie on a second horizontal plane, rather than on an arc.
             let depth = flat_scale_depth(l);
@@ -375,7 +356,7 @@ impl AnalogSkin {
                     at(vec2(-depth - 18., -depth)),
                     at(vec2(depth + 18., -depth)),
                 ],
-                Stroke::new(0.9 * panel.scale, ink),
+                Stroke::new(0.9 * panel.scale, INK),
             );
         } else {
             for (start, end, color, width) in [
@@ -393,14 +374,14 @@ impl AnalogSkin {
             Align2::CENTER_CENTER,
             "VU",
             FontId::proportional(22. * panel.scale),
-            ink,
+            INK,
         );
         p.text(
             face.left_bottom() + vec2(7., -20.) * panel.scale,
             Align2::LEFT_CENTER,
             if c == 0 { "LEFT" } else { "RIGHT" },
             FontId::monospace(8. * panel.scale),
-            ink,
+            INK,
         );
         let t = dsp_analog::position(
             self.movement.channels[c].position,
@@ -417,28 +398,14 @@ impl AnalogSkin {
         }
         p.line_segment(
             [hub, tip],
-            Stroke::new(
-                1.7 * panel.scale,
-                if l.dark {
-                    Color32::from_rgb(236, 231, 217)
-                } else {
-                    Color32::from_rgb(168, 34, 19)
-                },
-            ),
+            Stroke::new(1.7 * panel.scale, Color32::from_rgb(168, 34, 19)),
         );
         p.line_segment(
             [
                 hub - vec2(0.35, 0.) * panel.scale,
                 tip - vec2(0.35, 0.) * panel.scale,
             ],
-            Stroke::new(
-                0.45 * panel.scale,
-                if l.dark {
-                    Color32::WHITE
-                } else {
-                    Color32::from_rgb(245, 111, 65)
-                },
-            ),
+            Stroke::new(0.45 * panel.scale, Color32::from_rgb(245, 111, 65)),
         );
         skins::gradient(
             &p,
@@ -447,14 +414,204 @@ impl AnalogSkin {
             Color32::TRANSPARENT,
         );
     }
+    /// Reverse-lit red print and a fine warm needle behind smoked glass.
+    /// Only illumination changes; the selected analog detector and reference are shared.
+    fn walnut_dial(
+        &self,
+        p: &Painter,
+        panel: Panel,
+        c: usize,
+        settings: &Settings,
+        power: bool,
+        l: Layout,
+    ) {
+        let face = panel.rect(l.faces[c]);
+        let p = p.with_clip_rect(face);
+        let [x, y] = l.pivots[c];
+        let at = |offset: Vec2| panel.point(x + offset.x, y + offset.y);
+        let point = |db: f32, offset| at(scale_offset(l, 10f32.powf((db - 3.) / 20.), offset));
+        let light = if power { settings.vfd_brightness } else { 0. };
+        let ink = lamp_ink([64, 35, 29], [255, 105, 78], light);
+        let hot = lamp_ink([70, 29, 23], [255, 76, 48], light);
+        let warm = lamp_ink([85, 68, 50], [255, 209, 158], light);
+        p.rect_filled(
+            face,
+            0.,
+            Color32::from_black_alpha(((1. - light) * 100.) as u8),
+        );
+        // The lower diffuser is a steady physical lamp, never a signal-level bar.
+        let lamp = panel.rect([l.faces[c][0] + 18., 228., l.faces[c][2] - 36., 0.7]);
+        if light > 0. {
+            for (spread, alpha) in [(3., 7.), (1.4, 18.), (0., 125.)] {
+                p.rect_filled(
+                    lamp.expand(spread * panel.scale),
+                    0.,
+                    Color32::from_rgba_unmultiplied(255, 181, 118, (alpha * light) as u8),
+                );
+            }
+            for i in 0..96 {
+                let x = lamp.left() + lamp.width() * i as f32 / 95.;
+                p.line_segment(
+                    [
+                        pos2(x, lamp.top() - 1.7 * panel.scale),
+                        pos2(x, lamp.bottom()),
+                    ],
+                    Stroke::new(0.45 * panel.scale, warm.gamma_multiply(0.32 * light)),
+                );
+            }
+        }
+        let labels = [
+            (-20., "−20"),
+            (-10., "−10"),
+            (-7., "−7"),
+            (-5., "−5"),
+            (-3., "−3"),
+            (-1., "−1"),
+            (0., "0"),
+            (1., "+1"),
+            (2., "+2"),
+            (3., "+3"),
+        ];
+        for db in -20..=3 {
+            if db < -10 && db % 2 != 0 {
+                continue;
+            }
+            let major = labels.iter().any(|(value, _)| *value == db as f32);
+            let color = if db > 0 { hot } else { ink };
+            lit_line(
+                &p,
+                [
+                    point(db as f32, 4.),
+                    point(db as f32, if major { 29. } else { 19. }),
+                ],
+                if major { 1. } else { 0.65 },
+                color,
+                light,
+                panel.scale,
+            );
+            // Short lower divisions follow the very same needle ray.
+            lit_line(
+                &p,
+                [point(db as f32, -5.), point(db as f32, -11.)],
+                0.55,
+                color.gamma_multiply(0.78),
+                light * 0.55,
+                panel.scale,
+            );
+        }
+        for (db, text) in labels {
+            lit_text(
+                &p,
+                point(db, 45.),
+                text,
+                10.5,
+                if db > 0. { hot } else { ink },
+                light,
+                panel.scale,
+            );
+        }
+        let depth = flat_scale_depth(l);
+        lit_line(
+            &p,
+            [
+                at(vec2(-depth - 18., -depth)),
+                at(vec2(depth + 18., -depth)),
+            ],
+            0.65,
+            ink.gamma_multiply(0.75),
+            light * 0.6,
+            panel.scale,
+        );
+        lit_text(
+            &p,
+            at(vec2(0., -35.)),
+            "LEVEL / VU",
+            10.,
+            ink,
+            light,
+            panel.scale,
+        );
+        lit_text(
+            &p,
+            at(vec2(0., -20.)),
+            if c == 0 { "LEFT" } else { "RIGHT" },
+            8.,
+            ink,
+            light,
+            panel.scale,
+        );
+        let t = dsp_analog::position(
+            self.movement.channels[c].position,
+            settings.analog_reference_dbfs,
+        );
+        let hub = at(Vec2::ZERO);
+        let tip = at(needle_offset(t, needle_length(l)));
+        p.line_segment(
+            [
+                hub + vec2(1.2, 0.8) * panel.scale,
+                tip + vec2(1.2, 0.8) * panel.scale,
+            ],
+            Stroke::new(1.8 * panel.scale, Color32::from_black_alpha(50)),
+        );
+        lit_line(&p, [hub, tip], 0.95, warm, light * 0.6, panel.scale);
+        skins::gradient(
+            &p,
+            Rect::from_min_size(face.min, vec2(face.width(), face.height() * 0.22)),
+            Color32::from_white_alpha(8),
+            Color32::TRANSPARENT,
+        );
+    }
 }
+/// Light intensity changes tint and halo together, including an unlit printed state.
+fn lamp_ink(off: [u8; 3], on: [u8; 3], light: f32) -> Color32 {
+    let component = |i| (off[i] as f32 + (on[i] as f32 - off[i] as f32) * light) as u8;
+    Color32::from_rgb(component(0), component(1), component(2))
+}
+fn lit_line(p: &Painter, points: [Pos2; 2], width: f32, color: Color32, light: f32, scale: f32) {
+    if light > 0. {
+        for (spread, alpha) in [(2.8, 8.), (1.2, 21.)] {
+            p.line_segment(
+                points,
+                Stroke::new(
+                    (width + spread) * scale,
+                    Color32::from_rgba_unmultiplied(
+                        color.r(),
+                        color.g(),
+                        color.b(),
+                        (alpha * light) as u8,
+                    ),
+                ),
+            );
+        }
+    }
+    p.line_segment(points, Stroke::new(width * scale, color));
+}
+fn lit_text(p: &Painter, at: Pos2, text: &str, size: f32, color: Color32, light: f32, scale: f32) {
+    let font = FontId::proportional(size * scale);
+    if light > 0. {
+        for offset in [vec2(-0.8, 0.), vec2(0.8, 0.), vec2(0., -0.8), vec2(0., 0.8)] {
+            p.text(
+                at + offset * scale,
+                Align2::CENTER_CENTER,
+                text,
+                font.clone(),
+                Color32::from_rgba_unmultiplied(
+                    color.r(),
+                    color.g(),
+                    color.b(),
+                    (27. * light) as u8,
+                ),
+            );
+        }
+    }
+    p.text(at, Align2::CENTER_CENTER, text, font, color);
+}
+
 fn flat_scale_depth(l: Layout) -> f32 {
     l.radius - 43.
 }
 fn needle_length(l: Layout) -> f32 {
-    if l.dark {
-        130.
-    } else if l.ivory {
+    if l.dark || l.ivory {
         112.
     } else {
         l.radius + 11.
