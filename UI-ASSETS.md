@@ -68,7 +68,7 @@ mesh patch, label background or separate material is drawn underneath the logo.
 Only the native exact logo pixels appear on the continuous photographic metal.
 The earlier sampled header patch was rejected by the owner and removed entirely.
 
-## Walnut Studio (1.5.0 local preview)
+## Walnut Studio (1.5.0)
 
 - Tool: built-in `image_gen.imagegen`, precise-object-edit mode.
 - Runtime asset: `assets/receiver-analog-walnut-v1.png`. Exact prompt and input roles: `assets/receiver-analog-walnut-v1.prompt.txt`.

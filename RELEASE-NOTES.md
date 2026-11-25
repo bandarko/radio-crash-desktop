@@ -1,4 +1,4 @@
-# Radio Crash Desktop 1.5.0 - local preview
+# Radio Crash Desktop 1.5.0
 
 - New optional Analog VU - Walnut Studio skin: natural walnut side cheeks, dark brushed aluminium, smoked black instrument glass, red-orange backlit scales and fine warm needles.
 - Revised powered-on meter lighting from the owner's detailed reference: red-orange reverse-lit divisions and numerals, a fine warm needle, short secondary ticks and a warm lower diffuser. The night dimmer reduces the print and halo together; power off leaves subdued unlit printing. Needles now stop below the numeral row.
@@ -7,7 +7,7 @@
 - The dark instruments use a straight printed scale with fanned divisions and constant-length circular needle travel. A steady warm edge lamp follows power and the illumination setting; it never simulates an audio reading.
 - Real artist/title, detected stream properties, long-text scrolling, standby clock and functional power, playback, mute and volume controls are retained.
 - Four skins are selectable and the selection is saved. VFD Digital - Black Aluminium stays the default. The three existing skins and their control geometry are retained.
-- Local owner review only. This candidate has not been approved for publication. Windows cross-build validation does not constitute physical Windows runtime verification.
+- The owner approved publication after local preview. Windows build validation does not constitute physical Windows runtime verification.
 
 # Radio Crash Desktop 1.4.1
 

@@ -94,7 +94,7 @@ are inferred from the stream. Silver Aluminium keeps its approved curved scale
 and existing small centre window. The proposed taller centre was rejected and
 never integrated. No material asset was regenerated for this straight scale.
 
-## 1.5.0 Walnut Studio (local owner review)
+## 1.5.0 Walnut Studio
 
 Fourth optional skin with walnut side cheeks, dark anodized brushed aluminium,
 smoked black meter windows and a warm amber now-playing display. The original
@@ -111,4 +111,4 @@ needle pivot/radius and face colors. All buttons and circular volume targets use
 the same uniform panel transform as the material. Skin choice serializes as
 `analog_walnut`. No dependencies or platform graphics requirements are added.
 
-Local candidate only. The owner must test and approve before GitHub publication.
+The owner approved publication of 1.5.0 after local preview. Physical Windows runtime testing remains unverified.
